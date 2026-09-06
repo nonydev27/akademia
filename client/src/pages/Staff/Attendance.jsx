@@ -107,14 +107,14 @@ export default function StaffAttendance() {
       {/* Keyboard hint */}
       {roster.length > 0 && (
         <div className="flex items-center gap-4 px-4 py-3 bg-brand-50 rounded-xl text-sm text-brand-800 border border-brand-200 animate-fade-in">
-          <span className="font-semibold">⌨️ Keyboard:</span>
+          <span className="font-semibold inline-flex items-center gap-1.5"><Keyboard className="w-4 h-4" /> Keyboard:</span>
           {[['P', 'Present', 'emerald'], ['A', 'Absent', 'red'], ['T', 'Tardy', 'amber']].map(([k, l, c]) => (
             <span key={k} className="flex items-center gap-1">
               <kbd className={`px-2 py-0.5 rounded font-mono text-xs font-bold border bg-${c}-100 text-${c}-700 border-${c}-400`}>{k}</kbd>
               <span className="text-slate-600">{l}</span>
             </span>
           ))}
-          <span className="text-slate-500">↑↓ navigate</span>
+          <span className="text-slate-500 inline-flex items-center gap-1"><ArrowUpDown className="w-3.5 h-3.5" /> navigate</span>
         </div>
       )}
 
@@ -191,7 +191,7 @@ export default function StaffAttendance() {
       {roster.length > 0 && (
         <div className="flex justify-end">
           <Button variant="accent" size="lg" loading={saving} onClick={handleSubmit}>
-            💾 Save All Attendance
+            <Save className="w-4 h-4" /> Save All Attendance
           </Button>
         </div>
       )}

@@ -8,6 +8,7 @@ import StatusBadge   from '../../components/ui/StatusBadge';
 import Modal         from '../../components/ui/Modal';
 import Button        from '../../components/ui/Button';
 import Input         from '../../components/ui/Input';
+import { School, CheckCircle2, AlertTriangle, Lock, ArrowRight, Plus, PartyPopper } from 'lucide-react';
 
 export default function TenantsDashboard() {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ export default function TenantsDashboard() {
     setSaving(true);
     try {
       await tenantsApi.create(form);
-      toast.success(`${form.schoolName} added successfully! 🎉`);
+      toast.success(`${form.schoolName} added successfully!`, { icon: <PartyPopper className="w-4 h-4" /> });
       setShowAdd(false);
       setForm({ schoolName: '', schoolLevel: 'JHS', adminFullName: '', adminEmail: '', adminPassword: '' });
       fetchTenants();
@@ -79,7 +80,7 @@ export default function TenantsDashboard() {
     { key: 'id', label: 'Actions',
       render: (id) => (
         <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/super-admin/schools/${id}`); }}>
-          Manage →
+          Manage <ArrowRight className="w-3.5 h-3.5" />
         </Button>
       ) },
   ];
@@ -93,16 +94,16 @@ export default function TenantsDashboard() {
           <p className="page-subtitle">Manage all school tenants and subscriptions</p>
         </div>
         <Button variant="primary" onClick={() => setShowAdd(true)}>
-          + Add School
+          <Plus className="w-4 h-4" /> Add School
         </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
-        <StatCard icon="🏫" label="Total Schools"    value={stats.total}  color="blue"   loading={loading} />
-        <StatCard icon="✅" label="Active"           value={stats.active} color="green"  loading={loading} />
-        <StatCard icon="⚠️" label="Grace Period"    value={stats.grace}  color="gold"   loading={loading} />
-        <StatCard icon="🔒" label="Locked"           value={stats.locked} color="red"    loading={loading} />
+        <StatCard icon={<School />} label="Total Schools"    value={stats.total}  color="blue"   loading={loading} />
+        <StatCard icon={<CheckCircle2 />} label="Active"           value={stats.active} color="green"  loading={loading} />
+        <StatCard icon={<AlertTriangle />} label="Grace Period"    value={stats.grace}  color="gold"   loading={loading} />
+        <StatCard icon={<Lock />} label="Locked"           value={stats.locked} color="red"    loading={loading} />
       </div>
 
       {/* Table */}
@@ -121,7 +122,7 @@ export default function TenantsDashboard() {
           data={filtered}
           loading={loading}
           emptyMessage="No schools found"
-          emptyIcon="🏫"
+          emptyIcon={<School className="w-12 h-12" />}
           total={filtered.length}
           pageSize={20}
           onRowClick={(row) => navigate(`/super-admin/schools/${row.id}`)}

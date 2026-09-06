@@ -6,8 +6,14 @@ import DataTable   from '../../components/ui/DataTable';
 import Button      from '../../components/ui/Button';
 import Input       from '../../components/ui/Input';
 import Modal       from '../../components/ui/Modal';
+import { Wallet, CreditCard, FileText, Unlock, RefreshCw, CheckCircle2, Check } from 'lucide-react';
 
-const TABS = ['Outstanding', 'Record Payment', 'Fee Structures', 'Override'];
+const TABS = [
+  { label: 'Outstanding',     Icon: Wallet },
+  { label: 'Record Payment',  Icon: CreditCard },
+  { label: 'Fee Structures',  Icon: FileText },
+  { label: 'Override',        Icon: Unlock },
+];
 
 export default function Fees() {
   const [tab, setTab]               = useState(0);
@@ -49,8 +55,8 @@ export default function Fees() {
       {/* Tabs */}
       <div className="tab-bar">
         {TABS.map((t, i) => (
-          <button key={t} className={`tab-item ${tab === i ? 'active' : ''}`} onClick={() => setTab(i)}>
-            {['💸', '💳', '📄', '🔓'][i]} {t}
+          <button key={t.label} className={`tab-item inline-flex items-center gap-1.5 ${tab === i ? 'active' : ''}`} onClick={() => setTab(i)}>
+            <t.Icon className="w-3.5 h-3.5" /> {t.label}
           </button>
         ))}
       </div>
@@ -79,11 +85,11 @@ function OutstandingTab({ data, loading, onRefresh }) {
     <div className="card p-5 animate-fade-in-up">
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-bold text-slate-800">Students with Outstanding Balances</h2>
-        <Button size="sm" variant="secondary" onClick={onRefresh}>↻ Refresh</Button>
+        <Button size="sm" variant="secondary" onClick={onRefresh}><RefreshCw className="w-3.5 h-3.5" /> Refresh</Button>
       </div>
       <DataTable columns={cols} data={data} loading={loading}
-                 emptyMessage="No outstanding balances — all fees cleared! 🎉"
-                 emptyIcon="✅" total={data.length} pageSize={20} />
+                 emptyMessage="No outstanding balances — all fees cleared!"
+                 emptyIcon={<CheckCircle2 className="w-12 h-12" />} total={data.length} pageSize={20} />
     </div>
   );
 }
@@ -152,8 +158,8 @@ function RecordPaymentTab({ onDone }) {
             </div>
           )}
           {selected && (
-            <div className="mt-2 px-4 py-2 bg-brand-50 rounded-xl text-sm text-brand-800">
-              ✓ {selected.fullName} selected
+            <div className="mt-2 px-4 py-2 bg-brand-50 rounded-xl text-sm text-brand-800 inline-flex items-center gap-1.5">
+              <Check className="w-4 h-4" /> {selected.fullName} selected
             </div>
           )}
         </div>
@@ -168,7 +174,7 @@ function RecordPaymentTab({ onDone }) {
                value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} required />
 
         <Button type="submit" variant="accent" loading={saving} disabled={!form.studentId} className="w-full">
-          💳 Record Payment
+          <CreditCard className="w-4 h-4" /> Record Payment
         </Button>
       </form>
     </div>
@@ -184,7 +190,7 @@ function FeeStructuresTab() {
     setSaving(true);
     try {
       await feesApi.createStructure({ ...form, amount: parseFloat(form.amount) });
-      toast.success('Fee structure created ✅');
+      toast.success('Fee structure created');
       setForm({ termId: '', amount: '', label: '' });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create structure');
@@ -229,7 +235,7 @@ function OverrideTab({ onDone }) {
     setSaving(true);
     try {
       await feesApi.override(selected.id, reason);
-      toast.success(`Fee lock overridden for ${selected.fullName} ✅`);
+      toast.success(`Fee lock overridden for ${selected.fullName}`);
       setSelected(null); setReason(''); setConfirm(false); setStudents([]); setSearch('');
       onDone();
     } catch (err) {
