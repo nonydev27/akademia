@@ -4,6 +4,7 @@ import { studentsApi } from '../../api/students';
 import { gradesApi }   from '../../api/grades';
 import Button from '../../components/ui/Button';
 import Modal  from '../../components/ui/Modal';
+import { Save, Lock, AlertTriangle } from 'lucide-react';
 
 function computeAggregate(ca, exam) {
   const c = parseFloat(ca);
@@ -68,7 +69,7 @@ export default function GradeEntry() {
         }));
       }
       await Promise.all(promises);
-      toast.success(`${student.fullName.split(' ')[0]}'s scores saved ✅`);
+      toast.success(`${student.fullName.split(' ')[0]}'s scores saved`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Save failed');
     } finally {
@@ -81,7 +82,7 @@ export default function GradeEntry() {
       await saveRow(student);
       await new Promise((r) => setTimeout(r, 200));
     }
-    toast.success('All scores saved! 🎉');
+    toast.success('All scores saved!');
   }
 
   async function handleFinalize() {
@@ -104,7 +105,7 @@ export default function GradeEntry() {
           <p className="page-subtitle">Submit CA and exam scores · CA=30%, Exam=70%</p>
         </div>
         {students.length > 0 && (
-          <Button variant="accent" onClick={saveAll}>💾 Save All</Button>
+          <Button variant="accent" onClick={saveAll}><Save className="w-4 h-4" /> Save All</Button>
         )}
       </div>
 

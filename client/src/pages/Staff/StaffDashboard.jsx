@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { CheckSquare, NotebookPen, ArrowRight, Lightbulb } from 'lucide-react';
 
 export default function StaffDashboard() {
   const { user }  = useAuth();
@@ -7,14 +8,14 @@ export default function StaffDashboard() {
 
   const actions = [
     {
-      icon: '✅',
+      icon: <CheckSquare className="w-10 h-10 mb-4" />,
       label: 'Mark Attendance',
       sub: 'Record today\'s class attendance',
       to: '/staff/attendance',
       gradient: 'from-emerald-500 to-teal-600',
     },
     {
-      icon: '📝',
+      icon: <NotebookPen className="w-10 h-10 mb-4" />,
       label: 'Enter Grades',
       sub: 'Submit CA and exam scores',
       to: '/staff/grades',
@@ -27,7 +28,7 @@ export default function StaffDashboard() {
       {/* Welcome */}
       <div className="card p-6 bg-gradient-to-r from-brand-800 to-indigo-900 text-white animate-fade-in">
         <h1 className="text-2xl font-extrabold mb-1">
-          Welcome, {user?.fullName?.split(' ')[0]} 📚
+          Welcome, {user?.fullName?.split(' ')[0]}
         </h1>
         <p className="text-brand-200 text-sm">
           {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -44,11 +45,11 @@ export default function StaffDashboard() {
                         transition-all duration-300 active:scale-95 cursor-pointer
                         bg-gradient-to-br ${a.gradient} text-white border-0 animate-fade-in-up`}
           >
-            <div className="text-5xl mb-4 animate-bounce-soft">{a.icon}</div>
+            <div className="animate-bounce-soft">{a.icon}</div>
             <h2 className="text-xl font-extrabold mb-1">{a.label}</h2>
             <p className="text-white/70 text-sm">{a.sub}</p>
             <div className="mt-4 text-sm font-semibold opacity-80 flex items-center gap-1">
-              Go now →
+              Go now <ArrowRight className="w-3.5 h-3.5" />
             </div>
           </button>
         ))}
@@ -56,20 +57,22 @@ export default function StaffDashboard() {
 
       {/* Tips */}
       <div className="card p-5 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-        <h2 className="font-bold text-slate-800 mb-3">💡 Quick Tips</h2>
+        <h2 className="font-bold text-slate-800 mb-3 inline-flex items-center gap-2">
+          <Lightbulb className="w-4 h-4 text-amber-500" /> Quick Tips
+        </h2>
         <ul className="space-y-2 text-sm text-slate-600">
           <li className="flex items-start gap-2">
-            <span className="text-brand-500 font-bold mt-0.5">→</span>
+            <ArrowRight className="w-4 h-4 text-brand-500 mt-0.5 flex-shrink-0" />
             Use keyboard shortcut <kbd className="px-1.5 py-0.5 rounded bg-slate-100 text-xs font-mono">P</kbd>,{' '}
             <kbd className="px-1.5 py-0.5 rounded bg-slate-100 text-xs font-mono">A</kbd>,{' '}
             <kbd className="px-1.5 py-0.5 rounded bg-slate-100 text-xs font-mono">T</kbd> on attendance rows.
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-brand-500 font-bold mt-0.5">→</span>
+            <ArrowRight className="w-4 h-4 text-brand-500 mt-0.5 flex-shrink-0" />
             Grades are auto-aggregated: CA (30%) + Exam (70%).
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-brand-500 font-bold mt-0.5">→</span>
+            <ArrowRight className="w-4 h-4 text-brand-500 mt-0.5 flex-shrink-0" />
             Finalized grades cannot be edited. Review carefully before finalizing.
           </li>
         </ul>

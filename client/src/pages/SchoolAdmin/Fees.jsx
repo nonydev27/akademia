@@ -246,7 +246,7 @@ function OverrideTab({ onDone }) {
   return (
     <div className="card p-6 max-w-lg animate-fade-in-up">
       <div className="flex items-center gap-3 mb-5">
-        <span className="text-2xl">🔓</span>
+        <Unlock className="w-6 h-6 text-slate-700" />
         <div>
           <h2 className="font-bold text-slate-800">Fee Lock Override</h2>
           <p className="text-xs text-slate-500">Admin action — every override is audited</p>
