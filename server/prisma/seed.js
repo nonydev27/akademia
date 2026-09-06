@@ -6,20 +6,37 @@
  */
 
 import 'dotenv/config';
-import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
+import { createClient } from '@supabase/supabase-js';
 
 const prisma = new PrismaClient();
+const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 const SUPER_ADMIN_EMAIL = process.env.SEED_SUPER_ADMIN_EMAIL || 'superadmin@akademia.app';
 const SUPER_ADMIN_PASSWORD = process.env.SEED_SUPER_ADMIN_PASSWORD || 'ChangeMe123!';
 
+async function findOrCreateAuthUser(email, password) {
+  const { data: page } = await supabaseAdmin.auth.admin.listUsers();
+  const existing = page?.users?.find((u) => u.email === email);
+  if (existing) return existing;
+
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (error) throw error;
+  return data.user;
+}
+
 async function main() {
-  const superAdminHash = await bcrypt.hash(SUPER_ADMIN_PASSWORD, 10);
+  const superAdminAuth = await findOrCreateAuthUser(SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD);
   await prisma.user.upsert({
     where: { email: SUPER_ADMIN_EMAIL },
-    create: { email: SUPER_ADMIN_EMAIL, fullName: 'Platform Super Admin', role: 'SUPER_ADMIN', passwordHash: superAdminHash },
-    update: {},
+    create: { email: SUPER_ADMIN_EMAIL, fullName: 'Platform Super Admin', role: 'SUPER_ADMIN', supabaseId: superAdminAuth.id },
+    update: { supabaseId: superAdminAuth.id },
   });
   console.log(`Super Admin ready: ${SUPER_ADMIN_EMAIL} / ${SUPER_ADMIN_PASSWORD}`);
 
@@ -35,14 +52,14 @@ async function main() {
     data: { tenantId: tenant.id, status: 'ACTIVE', expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) },
   });
 
-  const adminHash = await bcrypt.hash('Admin123!', 10);
+  const adminAuth = await findOrCreateAuthUser('admin@demoschool.app', 'Admin123!');
   await prisma.user.create({
-    data: { tenantId: tenant.id, role: 'SCHOOL_ADMIN', fullName: 'Demo Admin', email: 'admin@demoschool.app', passwordHash: adminHash },
+    data: { tenantId: tenant.id, role: 'SCHOOL_ADMIN', fullName: 'Demo Admin', email: 'admin@demoschool.app', supabaseId: adminAuth.id },
   });
 
-  const staffHash = await bcrypt.hash('Staff123!', 10);
+  const staffAuth = await findOrCreateAuthUser('teacher@demoschool.app', 'Staff123!');
   await prisma.user.create({
-    data: { tenantId: tenant.id, role: 'STAFF', fullName: 'Demo Teacher', email: 'teacher@demoschool.app', passwordHash: staffHash },
+    data: { tenantId: tenant.id, role: 'STAFF', fullName: 'Demo Teacher', email: 'teacher@demoschool.app', supabaseId: staffAuth.id },
   });
 
   const academicYear = await prisma.academicYear.create({ data: { tenantId: tenant.id, label: '2025/2026' } });

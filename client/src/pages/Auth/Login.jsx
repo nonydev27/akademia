@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { GraduationCap, Mail, Lock, Eye, EyeOff, ShieldCheck, School, BookOpen, ArrowRight, Loader2 } from 'lucide-react';
 
 // Floating particles data
 const PARTICLES = Array.from({ length: 18 }).map((_, i) => ({
@@ -12,6 +13,12 @@ const PARTICLES = Array.from({ length: 18 }).map((_, i) => ({
   duration: 8 + Math.random() * 12,
   color: i % 3 === 0 ? '#f59e0b' : i % 3 === 1 ? '#3b82f6' : '#a78bfa',
 }));
+
+const DEMO_ACCOUNTS = [
+  { label: 'Super Admin',  email: 'superadmin@akademia.app', pass: 'ChangeMe123!', Icon: ShieldCheck },
+  { label: 'School Admin', email: 'admin@demoschool.app',    pass: 'Admin123!',    Icon: School },
+  { label: 'Teacher',      email: 'teacher@demoschool.app',  pass: 'Staff123!',    Icon: BookOpen },
+];
 
 function getRoleDashboard(role) {
   if (role === 'SUPER_ADMIN')  return '/super-admin';
@@ -39,20 +46,6 @@ export default function Login() {
     if (user) navigate(getRoleDashboard(user.role), { replace: true });
   }, [user, navigate]);
 
-  // jQuery: floating label enhancement
-  useEffect(() => {
-    const $ = window.$;
-    if (!$) return;
-    $('.login-input').on('focus', function () {
-      $(this).parent().find('.field-line').css({ width: '100%', transition: 'width 0.3s ease' });
-    }).on('blur', function () {
-      if (!$(this).val()) {
-        $(this).parent().find('.field-line').css({ width: '0%' });
-      }
-    });
-    return () => $('.login-input').off('focus blur');
-  }, []);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
@@ -63,20 +56,14 @@ export default function Login() {
     setLoading(true);
     try {
       const u = await login(email, password);
-      toast.success(`Welcome back, ${u.fullName.split(' ')[0]}! 👋`);
+      toast.success(`Welcome back, ${u.fullName.split(' ')[0]}!`);
       // Brief success animation before redirect
       setTimeout(() => navigate(getRoleDashboard(u.role), { replace: true }), 600);
     } catch (err) {
-      const msg = err.response?.data?.message || 'Invalid email or password';
+      const msg = err.response?.data?.message || err.message || 'Invalid email or password';
       toast.error(msg);
       setShake(true);
       setTimeout(() => setShake(false), 600);
-      // jQuery shake
-      const $ = window.$;
-      if ($) {
-        $(formRef.current).css({ animation: 'none' });
-        setTimeout(() => $(formRef.current).css({ animation: 'shake 0.5s ease-in-out' }), 10);
-      }
     } finally {
       setLoading(false);
     }
@@ -126,7 +113,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4
                           bg-gradient-to-br from-brand-600 to-brand-800
                           shadow-glow-blue animate-glow">
-            <span className="text-3xl">🎓</span>
+            <GraduationCap className="w-8 h-8 text-white" strokeWidth={2} />
           </div>
           <h1 className="text-3xl font-extrabold gradient-text tracking-tight">
             Akademia
@@ -145,7 +132,7 @@ export default function Login() {
               Email Address
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">✉️</span>
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 className="login-input w-full bg-white/10 border border-white/10 text-white
                            rounded-xl px-4 py-3 pl-10 text-sm placeholder-slate-500
@@ -158,7 +145,6 @@ export default function Login() {
                 autoComplete="email"
                 required
               />
-              <div className="field-line absolute bottom-0 left-0 h-0.5 bg-brand-400 rounded w-0" />
             </div>
           </div>
 
@@ -169,7 +155,7 @@ export default function Login() {
               Password
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔒</span>
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 className="login-input w-full bg-white/10 border border-white/10 text-white
                            rounded-xl px-4 py-3 pl-10 pr-12 text-sm placeholder-slate-500
@@ -186,11 +172,11 @@ export default function Login() {
                 type="button"
                 onClick={() => setShow(!showPass)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white
-                           transition-colors duration-200 text-sm"
+                           transition-colors duration-200"
+                aria-label={showPass ? 'Hide password' : 'Show password'}
               >
-                {showPass ? '🙈' : '👁️'}
+                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
-              <div className="field-line absolute bottom-0 left-0 h-0.5 bg-brand-400 rounded w-0" />
             </div>
           </div>
 
@@ -211,14 +197,14 @@ export default function Login() {
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                  </svg>
+                  <Loader2 className="animate-spin w-4 h-4" />
                   Signing in…
                 </>
               ) : (
-                <>Sign In →</>
+                <>
+                  Sign In
+                  <ArrowRight className="w-4 h-4" />
+                </>
               )}
             </button>
           </div>
@@ -229,11 +215,7 @@ export default function Login() {
                          ${mounted ? 'opacity-100' : 'opacity-0'}`}>
           <p className="text-xs text-slate-500 font-medium mb-3 uppercase tracking-widest">Demo Accounts</p>
           <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'Super Admin', email: 'superadmin@akademia.app', pass: 'ChangeMe123!' },
-              { label: 'School Admin', email: 'admin@demoschool.app', pass: 'Admin123!' },
-              { label: 'Teacher',     email: 'teacher@demoschool.app', pass: 'Staff123!' },
-            ].map((d) => (
+            {DEMO_ACCOUNTS.map((d) => (
               <button
                 key={d.label}
                 type="button"
@@ -243,7 +225,7 @@ export default function Login() {
                            text-slate-400 hover:text-white text-xs
                            transition-all duration-200 active:scale-95"
               >
-                <span className="text-base">{d.label === 'Super Admin' ? '🛡️' : d.label === 'School Admin' ? '🏫' : '📚'}</span>
+                <d.Icon className="w-4 h-4" />
                 {d.label}
               </button>
             ))}

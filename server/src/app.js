@@ -7,7 +7,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import cookieParser from 'cookie-parser';
 
 import authRoutes from './routes/auth.routes.js';
 import tenantRoutes from './routes/tenant.routes.js';
@@ -30,7 +29,6 @@ app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use('/api/v1/subscriptions/webhook', express.raw({ type: '*/*' }));
 
 app.use(express.json());
-app.use(cookieParser());
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

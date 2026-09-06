@@ -7,6 +7,10 @@ import { subscriptionsApi } from '../../api/subscriptions';
 import StatCard    from '../../components/ui/StatCard';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Button      from '../../components/ui/Button';
+import {
+  AlertTriangle, Users, Wallet, BarChart3, CalendarDays,
+  UserPlus, ClipboardCheck, CheckSquare, PartyPopper, ArrowRight,
+} from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user }  = useAuth();
@@ -46,7 +50,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-extrabold mb-1">
-              Good day, {user?.fullName?.split(' ')[0]} 👋
+              Good day, {user?.fullName?.split(' ')[0]}
             </h1>
             <p className="text-brand-200 text-sm">
               {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -69,22 +73,22 @@ export default function AdminDashboard() {
       {/* Subscription Grace Warning */}
       {subStatus?.status === 'EXPIRED_IN_GRACE' && (
         <div className="sub-warning animate-fade-in-down">
-          <span className="text-2xl">⚠️</span>
+          <AlertTriangle className="w-6 h-6 flex-shrink-0" />
           <div>
             <strong>Your subscription is in grace period.</strong>{' '}
             {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining before access is locked.
-            <button className="ml-2 underline font-bold hover:text-amber-900"
-                    onClick={() => navigate('/admin/subscription')}>Renew now →</button>
+            <button className="ml-2 underline font-bold hover:text-amber-900 inline-flex items-center gap-1"
+                    onClick={() => navigate('/admin/subscription')}>Renew now <ArrowRight className="w-3.5 h-3.5" /></button>
           </div>
         </div>
       )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
-        <StatCard icon="👨‍🎓" label="Total Students"     value={stats.students}     color="blue"   loading={loading} />
-        <StatCard icon="💰" label="Outstanding Fees (GHS)" value={`GHS ${stats.outstanding.toFixed(0)}`} color="red" loading={loading} />
-        <StatCard icon="📊" label="Students with Balance" value={stats.overdueCount}  color="gold"   loading={loading} />
-        <StatCard icon="📅" label="Today's Date"
+        <StatCard icon={<Users />} label="Total Students"     value={stats.students}     color="blue"   loading={loading} />
+        <StatCard icon={<Wallet />} label="Outstanding Fees (GHS)" value={`GHS ${stats.outstanding.toFixed(0)}`} color="red" loading={loading} />
+        <StatCard icon={<BarChart3 />} label="Students with Balance" value={stats.overdueCount}  color="gold"   loading={loading} />
+        <StatCard icon={<CalendarDays />} label="Today's Date"
           value={new Date().getDate()} sub={new Date().toLocaleString('default',{month:'long',year:'numeric'})}
           color="purple" loading={loading} />
       </div>
@@ -94,10 +98,10 @@ export default function AdminDashboard() {
         <h2 className="font-bold text-slate-800 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { icon: '👨‍🎓', label: 'Add Student',       to: '/admin/students',  variant: 'primary' },
-            { icon: '💰', label: 'Record Payment',     to: '/admin/fees',       variant: 'accent' },
-            { icon: '📋', label: 'Publish Results',    to: '/admin/results',    variant: 'secondary' },
-            { icon: '✅', label: 'View Attendance',    to: '/admin/attendance', variant: 'secondary' },
+            { icon: <UserPlus className="w-6 h-6" />,      label: 'Add Student',       to: '/admin/students',  variant: 'primary' },
+            { icon: <Wallet className="w-6 h-6" />,        label: 'Record Payment',     to: '/admin/fees',       variant: 'accent' },
+            { icon: <ClipboardCheck className="w-6 h-6" />,label: 'Publish Results',    to: '/admin/results',    variant: 'secondary' },
+            { icon: <CheckSquare className="w-6 h-6" />,   label: 'View Attendance',    to: '/admin/attendance', variant: 'secondary' },
           ].map((a) => (
             <button
               key={a.to}
@@ -108,7 +112,7 @@ export default function AdminDashboard() {
                             a.variant === 'accent'  ? 'bg-accent-500 text-white hover:bg-accent-600' :
                             'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
             >
-              <span className="text-2xl">{a.icon}</span>
+              {a.icon}
               {a.label}
             </button>
           ))}
@@ -119,7 +123,7 @@ export default function AdminDashboard() {
       <div className="card p-6 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-slate-800">Students with Outstanding Fees</h2>
-          <Button size="sm" variant="outline" onClick={() => navigate('/admin/fees')}>View All →</Button>
+          <Button size="sm" variant="outline" onClick={() => navigate('/admin/fees')}>View All <ArrowRight className="w-3.5 h-3.5" /></Button>
         </div>
         <OutstandingPreview />
       </div>
@@ -146,7 +150,7 @@ function OutstandingPreview() {
 
   if (!data.length) return (
     <div className="flex flex-col items-center py-8 text-slate-400">
-      <span className="text-4xl mb-3">🎉</span>
+      <PartyPopper className="w-10 h-10 mb-3" />
       <p className="text-sm">All fees are cleared!</p>
     </div>
   );

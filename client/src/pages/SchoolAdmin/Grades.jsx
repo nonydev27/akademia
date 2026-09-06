@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { gradesApi } from '../../api/grades';
 import Button from '../../components/ui/Button';
 import Modal  from '../../components/ui/Modal';
+import { Check } from 'lucide-react';
 
 function gradeLetter(agg) {
   if (agg == null) return '—';
@@ -103,7 +104,11 @@ export default function Grades() {
                       <div className={`font-bold text-sm ${gradeColor(g.aggregate)}`}>
                         {g.aggregate ?? '—'} ({gradeLetter(g.aggregate)})
                       </div>
-                      {g.finalized && <span className="text-xs text-emerald-500">✓ Final</span>}
+                      {g.finalized && (
+                        <span className="text-xs text-emerald-500 inline-flex items-center gap-0.5">
+                          <Check className="w-3 h-3" /> Final
+                        </span>
+                      )}
                     </td>
                   ))}
                   <td>

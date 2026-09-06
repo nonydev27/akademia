@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 
 export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   const overlayRef = useRef(null);
@@ -42,7 +43,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
             onClick={onClose}
             className="btn btn-ghost w-8 h-8 p-0 rounded-lg text-slate-400 hover:text-slate-700"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 

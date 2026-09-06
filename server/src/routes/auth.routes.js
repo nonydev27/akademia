@@ -1,5 +1,8 @@
 /**
- * routes/auth.routes.js — public + session routes.
+ * routes/auth.routes.js — tenant registration + own-profile lookup.
+ *
+ * Login/logout/token refresh are handled client-side directly against
+ * Supabase Auth and never touch this API.
  */
 
 import { Router } from 'express';
@@ -17,9 +20,6 @@ router.post(
   validate({ body: controller.registerTenantSchema }),
   controller.registerTenant
 );
-router.post('/login', validate({ body: controller.loginSchema }), controller.login);
-router.post('/refresh-token', controller.refreshToken);
-router.post('/logout', controller.logout);
 router.get('/me', requireAuth, controller.me);
 
 export default router;

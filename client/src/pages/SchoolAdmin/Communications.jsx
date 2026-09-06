@@ -4,8 +4,14 @@ import { communicationsApi } from '../../api/communications';
 import DataTable   from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Button      from '../../components/ui/Button';
+import { Inbox, Mail, Smartphone, XCircle, RefreshCw } from 'lucide-react';
 
-const FILTERS = ['All', 'Email', 'SMS', 'Failed'];
+const FILTERS = [
+  { label: 'All',    Icon: Inbox },
+  { label: 'Email',  Icon: Mail },
+  { label: 'SMS',    Icon: Smartphone },
+  { label: 'Failed', Icon: XCircle },
+];
 
 export default function Communications() {
   const [tab, setTab]     = useState(0);
@@ -35,7 +41,7 @@ export default function Communications() {
     setRetrying((r) => ({ ...r, [id]: true }));
     try {
       await communicationsApi.retry(id);
-      toast.success('Retry sent ✅');
+      toast.success('Retry sent');
       fetchData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Retry failed');
@@ -57,7 +63,7 @@ export default function Communications() {
     { key: 'id', label: '',
       render: (id, row) => row.status === 'FAILED' ? (
         <Button size="sm" variant="outline" loading={!!retrying[id]} onClick={() => handleRetry(id)}>
-          ↻ Retry
+          <RefreshCw className="w-3.5 h-3.5" /> Retry
         </Button>
       ) : null },
   ];
@@ -73,9 +79,9 @@ export default function Communications() {
 
       <div className="tab-bar">
         {FILTERS.map((f, i) => (
-          <button key={f} className={`tab-item ${tab === i ? 'active' : ''}`}
+          <button key={f.label} className={`tab-item inline-flex items-center gap-1.5 ${tab === i ? 'active' : ''}`}
                   onClick={() => { setTab(i); setPage(1); }}>
-            {['📬', '✉️', '📱', '❌'][i]} {f}
+            <f.Icon className="w-3.5 h-3.5" /> {f.label}
           </button>
         ))}
       </div>
@@ -90,7 +96,6 @@ export default function Communications() {
           pageSize={20}
           onPageChange={setPage}
           emptyMessage="No communications yet"
-          emptyIcon="📭"
         />
       </div>
     </div>

@@ -14,6 +14,7 @@ import prisma from '../config/db.js';
 import { ApiError } from '../utils/ApiError.js';
 import { getStudentBalance } from '../services/fee.service.js';
 import { generateReportCardPdf } from '../services/pdf.service.js';
+import { uploadReportCard, downloadReportCard } from '../services/storage.service.js';
 import { sendResultEmail, sendFeeReminderEmail } from '../services/email.service.js';
 import { sendResultConfirmationSms, sendFeeReminderSms } from '../services/sms.service.js';
 import logger from '../utils/logger.js';
@@ -101,10 +102,12 @@ export async function publish(req, res) {
       attendanceSummary,
     });
 
+    const pdfPath = await uploadReportCard({ tenantId: req.tenantId, studentId, termId, pdfBuffer });
+
     const reportCard = await prisma.reportCard.upsert({
       where: { studentId_termId: { studentId, termId } },
-      create: { studentId, termId, status: 'RELEASED', publishedAt: new Date() },
-      update: { status: 'RELEASED', publishedAt: new Date() },
+      create: { studentId, termId, status: 'RELEASED', publishedAt: new Date(), pdfUrl: pdfPath },
+      update: { status: 'RELEASED', publishedAt: new Date(), pdfUrl: pdfPath },
     });
 
     await notifyRelease({ tenantId: req.tenantId, student, term, pdfBuffer, tenantName: tenant.name });
@@ -138,26 +141,31 @@ export async function getOne(req, res) {
 export async function downloadPdf(req, res) {
   const { studentId, termId } = req.params;
   const { student, term } = await loadStudentAndTerm(req.tenantId, studentId, termId);
-  const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
 
   const reportCard = await prisma.reportCard.findUnique({ where: { studentId_termId: { studentId, termId } } });
   if (!reportCard || reportCard.status !== 'RELEASED') {
     throw ApiError.forbidden('This report card has not been released');
   }
 
-  const grades = await prisma.grade.findMany({ where: { studentId, termId }, include: { subject: true } });
-  const attendanceRecords = await prisma.attendance.findMany({ where: { studentId } });
-  const present = attendanceRecords.filter((a) => a.status === 'PRESENT').length;
-  const total = attendanceRecords.length;
-  const attendanceSummary = { present, total, percentage: total > 0 ? Math.round((present / total) * 1000) / 10 : 0 };
+  let pdfBuffer = reportCard.pdfUrl ? await downloadReportCard(reportCard.pdfUrl) : null;
 
-  const pdfBuffer = await generateReportCardPdf({
-    tenantName: tenant.name,
-    student,
-    term,
-    grades: grades.map((g) => ({ subjectName: g.subject.name, caScore: g.caScore, examScore: g.examScore, aggregate: g.aggregate })),
-    attendanceSummary,
-  });
+  if (!pdfBuffer) {
+    const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
+    const grades = await prisma.grade.findMany({ where: { studentId, termId }, include: { subject: true } });
+    const attendanceRecords = await prisma.attendance.findMany({ where: { studentId } });
+    const present = attendanceRecords.filter((a) => a.status === 'PRESENT').length;
+    const total = attendanceRecords.length;
+    const attendanceSummary = { present, total, percentage: total > 0 ? Math.round((present / total) * 1000) / 10 : 0 };
+
+    pdfBuffer = await generateReportCardPdf({
+      tenantName: tenant.name,
+      student,
+      term,
+      grades: grades.map((g) => ({ subjectName: g.subject.name, caScore: g.caScore, examScore: g.examScore, aggregate: g.aggregate })),
+      attendanceSummary,
+    });
+    await uploadReportCard({ tenantId: req.tenantId, studentId, termId, pdfBuffer });
+  }
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${student.fullName}-${term.label}-report-card.pdf"`);

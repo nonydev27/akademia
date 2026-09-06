@@ -1,9 +1,11 @@
+import { Inbox, ChevronLeft, ChevronRight } from 'lucide-react';
+
 export default function DataTable({
   columns,        // [{ key, label, render? }]
   data,
   loading = false,
   emptyMessage = 'No records found',
-  emptyIcon = '📭',
+  emptyIcon = <Inbox className="w-12 h-12" />,
   page = 1,
   pageSize = 20,
   total = 0,
@@ -42,7 +44,7 @@ export default function DataTable({
     return (
       <div className="table-container">
         <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-          <span className="text-5xl mb-4 animate-bounce-soft">{emptyIcon}</span>
+          <div className="mb-4 animate-bounce-soft">{emptyIcon}</div>
           <p className="text-sm font-medium">{emptyMessage}</p>
         </div>
       </div>
@@ -91,7 +93,7 @@ export default function DataTable({
               disabled={page <= 1}
               className="btn btn-secondary btn-sm"
             >
-              ←
+              <ChevronLeft className="w-4 h-4" />
             </button>
             {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
               const p = i + 1;
@@ -110,7 +112,7 @@ export default function DataTable({
               disabled={page >= totalPages}
               className="btn btn-secondary btn-sm"
             >
-              →
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>

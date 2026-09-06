@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { attendanceApi } from '../../api/attendance';
 import Button from '../../components/ui/Button';
+import { Save, Keyboard, ArrowUpDown } from 'lucide-react';
 
 const STATUS_CONFIG = {
   PRESENT: { label: 'Present', bg: 'bg-emerald-100 border-emerald-400 text-emerald-700', row: 'bg-emerald-50' },
@@ -63,7 +64,7 @@ export default function StaffAttendance() {
     try {
       const records = Object.entries(marks).map(([studentId, status]) => ({ studentId, status }));
       await attendanceApi.submit({ date, records });
-      toast.success(`Attendance saved for ${records.length} students ✅`);
+      toast.success(`Attendance saved for ${records.length} students`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save attendance');
     } finally { setSaving(false); }
@@ -81,7 +82,7 @@ export default function StaffAttendance() {
         </div>
         {roster.length > 0 && (
           <Button variant="accent" loading={saving} onClick={handleSubmit}>
-            💾 Save Attendance
+            <Save className="w-4 h-4" /> Save Attendance
           </Button>
         )}
       </div>

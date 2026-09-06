@@ -1,11 +1,13 @@
 /**
- * middleware/auth.middleware.js — verifies the JWT and attaches the user.
+ * middleware/auth.middleware.js — verifies the Supabase access token and
+ * attaches the matching Prisma user profile (tenant + role) to the request.
  */
 
-import { verifyAccessToken } from '../services/auth.service.js';
+import { supabaseAdmin } from '../config/supabase.js';
+import prisma from '../config/db.js';
 import { ApiError } from '../utils/ApiError.js';
 
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const [scheme, token] = header.split(' ');
 
@@ -13,12 +15,19 @@ export function requireAuth(req, res, next) {
     throw ApiError.unauthorized();
   }
 
-  try {
-    const payload = verifyAccessToken(token);
-    if (payload.type !== 'access') throw new Error('wrong token type');
-    req.user = { id: payload.userId, tenantId: payload.tenantId ?? null, role: payload.role };
-    next();
-  } catch {
-    throw ApiError.unauthorized();
-  }
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data?.user) throw ApiError.unauthorized();
+
+  const profile = await prisma.user.findUnique({ where: { supabaseId: data.user.id } });
+  if (!profile) throw ApiError.unauthorized();
+
+  req.user = {
+    id: profile.id,
+    supabaseId: profile.supabaseId,
+    tenantId: profile.tenantId,
+    role: profile.role,
+    fullName: profile.fullName,
+    email: profile.email,
+  };
+  next();
 }

@@ -11,10 +11,10 @@ const schema = z.object({
 
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 
-  JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
-  JWT_EXPIRES_IN: z.string().default('15m'),
-  REFRESH_TOKEN_SECRET: z.string().min(16, 'REFRESH_TOKEN_SECRET must be at least 16 characters'),
-  REFRESH_TOKEN_EXPIRES_IN: z.string().default('30d'),
+  SUPABASE_URL: z.string().url('SUPABASE_URL is required'),
+  SUPABASE_ANON_KEY: z.string().min(1, 'SUPABASE_ANON_KEY is required'),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
+  SUPABASE_STORAGE_BUCKET: z.string().default('report-cards'),
 
   EMAIL_PROVIDER: z.enum(['resend', 'smtp']).default('resend'),
   RESEND_API_KEY: z.string().optional().default(''),

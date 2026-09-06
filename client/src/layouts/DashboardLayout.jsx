@@ -1,28 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import {
+  GraduationCap, LayoutDashboard, School, Users, CheckSquare, Wallet,
+  NotebookPen, ClipboardCheck, Send, KeyRound, LogOut, ChevronLeft,
+  ChevronRight, Menu, AlertTriangle, ArrowRight,
+} from 'lucide-react';
+
+const ICON_SIZE = 'w-[18px] h-[18px]';
 
 const NAV_SUPER_ADMIN = [
-  { to: '/super-admin',         icon: '🏛️',  label: 'Dashboard' },
-  { to: '/super-admin/schools', icon: '🏫',  label: 'Schools' },
+  { to: '/super-admin',         icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
+  { to: '/super-admin/schools', icon: <School className={ICON_SIZE} />,          label: 'Schools' },
 ];
 
 const NAV_SCHOOL_ADMIN = [
-  { to: '/admin',               icon: '📊',  label: 'Dashboard' },
-  { to: '/admin/students',      icon: '👨‍🎓', label: 'Students' },
-  { to: '/admin/attendance',    icon: '✅',  label: 'Attendance' },
-  { to: '/admin/fees',          icon: '💰',  label: 'Fees' },
-  { to: '/admin/grades',        icon: '📝',  label: 'Grades' },
-  { to: '/admin/results',       icon: '📋',  label: 'Publish Results' },
-  { to: '/admin/communications',icon: '📨',  label: 'Communications' },
-  { to: '/admin/subscription',  icon: '🔑',  label: 'Subscription' },
+  { to: '/admin',               icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
+  { to: '/admin/students',      icon: <Users className={ICON_SIZE} />,           label: 'Students' },
+  { to: '/admin/attendance',    icon: <CheckSquare className={ICON_SIZE} />,     label: 'Attendance' },
+  { to: '/admin/fees',          icon: <Wallet className={ICON_SIZE} />,          label: 'Fees' },
+  { to: '/admin/grades',        icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grades' },
+  { to: '/admin/results',       icon: <ClipboardCheck className={ICON_SIZE} />,  label: 'Publish Results' },
+  { to: '/admin/communications',icon: <Send className={ICON_SIZE} />,           label: 'Communications' },
+  { to: '/admin/subscription',  icon: <KeyRound className={ICON_SIZE} />,        label: 'Subscription' },
 ];
 
 const NAV_STAFF = [
-  { to: '/staff',               icon: '📊',  label: 'Dashboard' },
-  { to: '/staff/attendance',    icon: '✅',  label: 'Mark Attendance' },
-  { to: '/staff/grades',        icon: '📝',  label: 'Grade Entry' },
+  { to: '/staff',               icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
+  { to: '/staff/attendance',    icon: <CheckSquare className={ICON_SIZE} />,     label: 'Mark Attendance' },
+  { to: '/staff/grades',        icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grade Entry' },
 ];
 
 function getNav(role) {
@@ -39,22 +46,11 @@ function initials(name = '') {
 export default function DashboardLayout() {
   const { user, logout }          = useAuth();
   const navigate                   = useNavigate();
-  const location                   = useLocation();
   const [collapsed, setCollapsed]  = useState(false);
   const [mobileOpen, setMobile]    = useState(false);
-  const [subWarn, setSubWarn]      = useState(null);
+  const [subWarn]                  = useState(null);
 
   const nav = getNav(user?.role);
-
-  // jQuery: pulse the active nav item on route change
-  useEffect(() => {
-    const $ = window.$;
-    if (!$) return;
-    $('.nav-item.active').addClass('scale-105').delay(200).queue(function (next) {
-      $(this).removeClass('scale-105');
-      next();
-    });
-  }, [location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -93,7 +89,7 @@ export default function DashboardLayout() {
           <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br
                           from-brand-600 to-brand-800 flex items-center justify-center
                           shadow-glow-blue">
-            <span className="text-lg">🎓</span>
+            <GraduationCap className="w-5 h-5 text-white" />
           </div>
           {!collapsed && (
             <div className="animate-fade-in">
@@ -116,7 +112,7 @@ export default function DashboardLayout() {
               style={{ animationDelay: `${i * 60}ms` }}
               onClick={() => setMobile(false)}
             >
-              <span className="text-lg flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+              <span className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                 {item.icon}
               </span>
               {!collapsed && (
@@ -146,7 +142,7 @@ export default function DashboardLayout() {
                        text-slate-400 hover:text-red-400 hover:bg-red-900/20
                        transition-all duration-200 text-sm font-medium"
           >
-            <span className="text-base flex-shrink-0">🚪</span>
+            <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
             {!collapsed && <span>Sign Out</span>}
           </button>
           <button
@@ -155,7 +151,9 @@ export default function DashboardLayout() {
                        text-slate-500 hover:text-white hover:bg-white/10
                        transition-all duration-200 text-sm"
           >
-            <span className="text-base flex-shrink-0">{collapsed ? '▶' : '◀'}</span>
+            {collapsed
+              ? <ChevronRight className="w-[18px] h-[18px] flex-shrink-0" />
+              : <ChevronLeft className="w-[18px] h-[18px] flex-shrink-0" />}
             {!collapsed && <span>Collapse</span>}
           </button>
         </div>
@@ -171,9 +169,7 @@ export default function DashboardLayout() {
             className="md:hidden text-slate-600 hover:text-slate-900 p-1"
             onClick={() => setMobile(!mobileOpen)}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Menu className="w-6 h-6" />
           </button>
 
           {/* Page title from breadcrumb */}
@@ -185,7 +181,7 @@ export default function DashboardLayout() {
           <div className="flex items-center gap-3">
             {subWarn && (
               <span className="badge-expired text-xs hidden sm:inline-flex gap-1 items-center">
-                ⚠️ Grace Period
+                <AlertTriangle className="w-3.5 h-3.5" /> Grace Period
               </span>
             )}
             <div className="flex items-center gap-2">
@@ -204,11 +200,13 @@ export default function DashboardLayout() {
         {/* Subscription warning banner */}
         {subWarn && (
           <div className="sub-warning mx-6 mt-4 animate-fade-in-down">
-            <span className="text-lg">⚠️</span>
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
             <span>
               <strong>Subscription Grace Period:</strong> Your subscription has expired.
               You have {subWarn} days remaining before access is locked.
-              <a href="/admin/subscription" className="ml-2 underline font-semibold hover:text-amber-900">Renew now →</a>
+              <a href="/admin/subscription" className="ml-2 underline font-semibold hover:text-amber-900 inline-flex items-center gap-1">
+                Renew now <ArrowRight className="w-3.5 h-3.5" />
+              </a>
             </span>
           </div>
         )}

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 export default function Button({
   children,
@@ -11,26 +12,20 @@ export default function Button({
   className = '',
   ...props
 }) {
-  const btnRef = useRef(null);
+  const [ripples, setRipples] = useState([]);
 
-  // jQuery ripple effect
-  useEffect(() => {
-    const $ = window.$;
-    if (!$ || !btnRef.current) return;
-    const el = $(btnRef.current);
-    const handler = function (e) {
-      const offset = el.offset();
-      const x = e.pageX - offset.left;
-      const y = e.pageY - offset.top;
-      const ripple = $('<span class="ripple"></span>').css({
-        left: x - 20, top: y - 20, width: 40, height: 40,
-      });
-      el.append(ripple);
-      setTimeout(() => ripple.remove(), 700);
+  const handleClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const id = Date.now();
+    const ripple = {
+      id,
+      x: e.clientX - rect.left - 20,
+      y: e.clientY - rect.top - 20,
     };
-    el.on('click', handler);
-    return () => el.off('click', handler);
-  }, []);
+    setRipples((r) => [...r, ripple]);
+    setTimeout(() => setRipples((r) => r.filter((rp) => rp.id !== id)), 700);
+    onClick?.(e);
+  };
 
   const variantMap = {
     primary:   'btn-primary',
@@ -44,19 +39,16 @@ export default function Button({
 
   return (
     <button
-      ref={btnRef}
       type={type}
       disabled={disabled || loading}
-      onClick={onClick}
+      onClick={handleClick}
       className={`ripple-container ${variantMap[variant] || 'btn-primary'} ${sizeMap[size] || ''} ${className}`}
       {...props}
     >
-      {loading && (
-        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-        </svg>
-      )}
+      {ripples.map((r) => (
+        <span key={r.id} className="ripple" style={{ left: r.x, top: r.y, width: 40, height: 40 }} />
+      ))}
+      {loading && <Loader2 className="animate-spin w-4 h-4" />}
       {children}
     </button>
   );

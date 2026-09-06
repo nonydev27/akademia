@@ -50,8 +50,9 @@ export default function StatCard({ icon, label, value, sub, color = 'blue', load
       {/* Icon */}
       <div className={`inline-flex items-center justify-center w-11 h-11
                         rounded-xl bg-gradient-to-br ${grad} mb-4
-                        shadow-md group-hover:scale-110 transition-transform duration-300`}>
-        <span className="text-xl">{icon}</span>
+                        shadow-md group-hover:scale-110 transition-transform duration-300
+                        text-white [&>svg]:w-5 [&>svg]:h-5`}>
+        {icon}
       </div>
 
       {/* Value */}
