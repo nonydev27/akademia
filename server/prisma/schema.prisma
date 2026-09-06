@@ -1,0 +1,323 @@
+// Prisma schema — Akademia core data model (PRD section 10).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  SCHOOL_ADMIN
+  STAFF
+}
+
+enum SchoolLevel {
+  PRIMARY
+  JHS
+  SHS
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED_IN_GRACE
+  EXPIRED_LOCKED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  TARDY
+}
+
+enum ReportCardStatus {
+  WITHHELD
+  RELEASED
+}
+
+enum CommunicationChannel {
+  EMAIL
+  SMS
+}
+
+enum CommunicationStatus {
+  SENT
+  FAILED
+}
+
+// --- Tenancy ---
+
+model Tenant {
+  id          String      @id @default(uuid())
+  name        String
+  schoolLevel SchoolLevel
+  createdAt   DateTime    @default(now())
+
+  users          User[]
+  students       Student[]
+  subscription   Subscription?
+  academicYears  AcademicYear[]
+  classes        Class[]
+  subjects       Subject[]
+  guardians      Guardian[]
+  feeStructures  FeeStructure[]
+  auditLogs      AuditLog[]
+  communications Communication[]
+}
+
+model Subscription {
+  id             String             @id @default(uuid())
+  tenant         Tenant             @relation(fields: [tenantId], references: [id])
+  tenantId       String             @unique
+  status         SubscriptionStatus @default(ACTIVE)
+  expiresAt      DateTime
+  graceEndsAt    DateTime?
+  lastPaymentRef String?
+  updatedAt      DateTime           @updatedAt
+}
+
+// --- Users / Auth ---
+
+model User {
+  id           String   @id @default(uuid())
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id])
+  tenantId     String?
+  role         Role
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// --- Academic structure ---
+
+model AcademicYear {
+  id       String @id @default(uuid())
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenantId String
+  label    String
+
+  terms Term[]
+
+  @@index([tenantId])
+}
+
+model Term {
+  id             String       @id @default(uuid())
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+  academicYearId String
+  label          String
+  startDate      DateTime
+  endDate        DateTime
+
+  grades        Grade[]
+  reportCards   ReportCard[]
+  feeStructures FeeStructure[]
+
+  @@index([academicYearId])
+}
+
+model Class {
+  id       String @id @default(uuid())
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenantId String
+  name     String
+
+  enrollments Enrollment[]
+
+  @@index([tenantId])
+}
+
+model Enrollment {
+  id        String  @id @default(uuid())
+  student   Student @relation(fields: [studentId], references: [id])
+  studentId String
+  class     Class   @relation(fields: [classId], references: [id])
+  classId   String
+
+  @@index([classId])
+  @@index([studentId])
+}
+
+// --- Students & guardians ---
+
+model Student {
+  id              String    @id @default(uuid())
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  tenantId        String
+  admissionNumber String
+  fullName        String
+  dateOfBirth     DateTime?
+  email           String?
+  admissionDate   DateTime  @default(now())
+  active          Boolean   @default(true)
+
+  guardians   StudentGuardian[]
+  enrollments Enrollment[]
+  attendance  Attendance[]
+  grades      Grade[]
+  feeAccount  StudentFeeAccount?
+  reportCards ReportCard[]
+
+  @@unique([tenantId, admissionNumber])
+  @@index([tenantId])
+}
+
+model Guardian {
+  id       String @id @default(uuid())
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenantId String
+  fullName String
+  phone    String
+  email    String?
+
+  students StudentGuardian[]
+
+  @@index([tenantId])
+}
+
+model StudentGuardian {
+  id         String   @id @default(uuid())
+  student    Student  @relation(fields: [studentId], references: [id])
+  studentId  String
+  guardian   Guardian @relation(fields: [guardianId], references: [id])
+  guardianId String
+  relation   String?
+
+  @@index([studentId])
+  @@index([guardianId])
+}
+
+// --- Attendance ---
+
+model Attendance {
+  id             String            @id @default(uuid())
+  student        Student           @relation(fields: [studentId], references: [id])
+  studentId      String
+  date           DateTime
+  status         AttendanceStatus
+  markedByUserId String?
+
+  @@unique([studentId, date])
+}
+
+// --- Subjects & grading ---
+
+model Subject {
+  id       String @id @default(uuid())
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenantId String
+  name     String
+
+  grades Grade[]
+
+  @@index([tenantId])
+}
+
+model Grade {
+  id          String    @id @default(uuid())
+  student     Student   @relation(fields: [studentId], references: [id])
+  studentId   String
+  subject     Subject   @relation(fields: [subjectId], references: [id])
+  subjectId   String
+  term        Term      @relation(fields: [termId], references: [id])
+  termId      String
+  caScore     Float?
+  examScore   Float?
+  aggregate   Float?
+  finalized   Boolean   @default(false)
+  finalizedAt DateTime?
+
+  @@unique([studentId, subjectId, termId])
+}
+
+// --- Fees ---
+
+model FeeStructure {
+  id       String @id @default(uuid())
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenantId String
+  term     Term   @relation(fields: [termId], references: [id])
+  termId   String
+  amount   Float
+  label    String
+
+  @@index([tenantId])
+  @@index([termId])
+}
+
+model StudentFeeAccount {
+  id           String  @id @default(uuid())
+  student      Student @relation(fields: [studentId], references: [id])
+  studentId    String  @unique
+  totalCharged Float   @default(0)
+  totalPaid    Float   @default(0)
+
+  payments Payment[]
+}
+
+model Payment {
+  id        String            @id @default(uuid())
+  account   StudentFeeAccount @relation(fields: [accountId], references: [id])
+  accountId String
+  amount    Float
+  reference String            @unique
+  validated Boolean           @default(false)
+  paidAt    DateTime          @default(now())
+
+  @@index([accountId])
+}
+
+// --- Report cards ---
+
+model ReportCard {
+  id          String           @id @default(uuid())
+  student     Student          @relation(fields: [studentId], references: [id])
+  studentId   String
+  term        Term             @relation(fields: [termId], references: [id])
+  termId      String
+  status      ReportCardStatus @default(WITHHELD)
+  pdfUrl      String?
+  publishedAt DateTime?
+
+  @@unique([studentId, termId])
+}
+
+// --- Communications log ---
+
+model Communication {
+  id               String               @id @default(uuid())
+  tenant           Tenant               @relation(fields: [tenantId], references: [id])
+  tenantId         String
+  channel          CommunicationChannel
+  recipient        String
+  templateKey      String
+  status           CommunicationStatus
+  providerResponse String?
+  payload          Json?
+  createdAt        DateTime             @default(now())
+
+  @@index([tenantId])
+}
+
+// --- Audit ---
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId   String
+  actorId    String
+  action     String
+  targetType String
+  targetId   String
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+}
