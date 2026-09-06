@@ -5,6 +5,7 @@ import { tenantsApi } from '../../api/tenants';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Button      from '../../components/ui/Button';
 import DataTable   from '../../components/ui/DataTable';
+import { ArrowLeft, School, KeyRound, Users, UserRound } from 'lucide-react';
 
 export default function TenantDetail() {
   const { id }    = useParams();
@@ -37,7 +38,7 @@ export default function TenantDetail() {
     setSaving(true);
     try {
       await tenantsApi.updateSubscription(id, subForm);
-      toast.success('Subscription updated ✅');
+      toast.success('Subscription updated');
       fetchTenant();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Update failed');
@@ -77,7 +78,7 @@ export default function TenantDetail() {
         <div>
           <button onClick={() => navigate('/super-admin/schools')}
                   className="text-sm text-brand-600 hover:text-brand-800 font-medium mb-1 flex items-center gap-1">
-            ← Back to Schools
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Schools
           </button>
           <h1 className="page-title">{tenant.name}</h1>
           <p className="page-subtitle">
@@ -90,7 +91,7 @@ export default function TenantDetail() {
       <div className="grid md:grid-cols-2 gap-6">
         {/* School Info */}
         <div className="card p-6 animate-fade-in-up">
-          <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2">🏫 School Info</h2>
+          <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><School className="w-4 h-4" /> School Info</h2>
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between">
               <dt className="text-slate-500">Name</dt>
@@ -113,7 +114,7 @@ export default function TenantDetail() {
 
         {/* Subscription */}
         <div className="card p-6 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
-          <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2">🔑 Subscription</h2>
+          <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><KeyRound className="w-4 h-4" /> Subscription</h2>
           <div className="flex items-center gap-3 mb-4">
             <StatusBadge status={tenant.subscription?.status || 'EXPIRED_LOCKED'} />
             {daysRemaining !== null && (
@@ -147,12 +148,12 @@ export default function TenantDetail() {
 
       {/* Users */}
       <div className="card p-6 animate-fade-in-up" style={{ animationDelay: '160ms' }}>
-        <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2">👥 Users</h2>
+        <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Users className="w-4 h-4" /> Users</h2>
         <DataTable
           columns={userColumns}
           data={tenant.users || []}
           emptyMessage="No users yet"
-          emptyIcon="👤"
+          emptyIcon={<UserRound className="w-12 h-12" />}
           total={tenant.users?.length || 0}
           pageSize={20}
         />

@@ -6,6 +6,7 @@ import Modal       from '../../components/ui/Modal';
 import Button      from '../../components/ui/Button';
 import Input       from '../../components/ui/Input';
 import StatusBadge from '../../components/ui/StatusBadge';
+import { Plus, Search, X, Users, PartyPopper, CheckCircle2 } from 'lucide-react';
 
 export default function Students() {
   const [students, setStudents] = useState([]);
@@ -56,7 +57,7 @@ export default function Students() {
     setSaving(true);
     try {
       await studentsApi.create({ ...form, dateOfBirth: form.dateOfBirth || undefined });
-      toast.success('Student added! 🎉');
+      toast.success('Student added!', { icon: <PartyPopper className="w-4 h-4" /> });
       setShowAdd(false);
       setForm({ admissionNumber: '', fullName: '', dateOfBirth: '', email: '' });
       fetchStudents();
@@ -83,7 +84,7 @@ export default function Students() {
     setAddingGuardian(true);
     try {
       await studentsApi.addGuardian(selected.id, guardianForm);
-      toast.success('Guardian added ✅');
+      toast.success('Guardian added', { icon: <CheckCircle2 className="w-4 h-4" /> });
       setGuardianForm({ fullName: '', phone: '', email: '', relation: '' });
       openDetail(selected);
     } catch (err) {
@@ -117,7 +118,7 @@ export default function Students() {
             View
           </Button>
           <Button size="sm" variant="danger" onClick={(e) => { e.stopPropagation(); handleDeactivate(id, row.fullName); }}>
-            ×
+            <X className="w-3.5 h-3.5" />
           </Button>
         </div>
       )},
@@ -131,15 +132,18 @@ export default function Students() {
           <h1 className="page-title">Students</h1>
           <p className="page-subtitle">{total} student{total !== 1 ? 's' : ''} enrolled</p>
         </div>
-        <Button variant="primary" onClick={() => setShowAdd(true)}>+ Add Student</Button>
+        <Button variant="primary" onClick={() => setShowAdd(true)}><Plus className="w-4 h-4" /> Add Student</Button>
       </div>
 
       {/* Search */}
       <div className="card p-4">
-        <input className="input max-w-sm"
-               placeholder="🔍  Search by name or admission number…"
-               value={search}
-               onChange={(e) => setSearch(e.target.value)} />
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input className="input pl-9"
+                 placeholder="Search by name or admission number…"
+                 value={search}
+                 onChange={(e) => setSearch(e.target.value)} />
+        </div>
       </div>
 
       {/* Table */}
@@ -153,7 +157,7 @@ export default function Students() {
           pageSize={20}
           onPageChange={setPage}
           emptyMessage="No students found"
-          emptyIcon="👨‍🎓"
+          emptyIcon={<Users className="w-12 h-12" />}
           onRowClick={openDetail}
         />
       </div>
@@ -186,7 +190,7 @@ export default function Students() {
               {/* Close */}
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-slate-900">Student Profile</h2>
-                <Button variant="ghost" onClick={() => setSelected(null)}>✕</Button>
+                <Button variant="ghost" onClick={() => setSelected(null)}><X className="w-4 h-4" /></Button>
               </div>
 
               {detailLoading ? (

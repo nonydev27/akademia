@@ -191,7 +191,7 @@ export default function GradeEntry() {
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => setFinalizeModal(s)}
                                 title="Finalize grades for this student">
-                          🔒
+                          <Lock className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </td>
@@ -209,9 +209,10 @@ export default function GradeEntry() {
           <p className="text-sm text-slate-700">
             Finalize grades for <strong>{finalizeModal?.fullName}</strong>?
           </p>
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
-            ⚠️ <strong>This cannot be undone.</strong> Finalized grades cannot be edited. 
-            Make sure all scores are correct before finalizing.
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span><strong>This cannot be undone.</strong> Finalized grades cannot be edited.
+            Make sure all scores are correct before finalizing.</span>
           </div>
           <div className="flex gap-3">
             <Button variant="danger" loading={finalizing} onClick={handleFinalize} className="flex-1">

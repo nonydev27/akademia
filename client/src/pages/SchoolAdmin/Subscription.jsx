@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Button      from '../../components/ui/Button';
 import Input       from '../../components/ui/Input';
+import { Lock, AlertTriangle, CheckCircle2, CreditCard, ShieldCheck } from 'lucide-react';
 
 export default function Subscription() {
   const { user }          = useAuth();
@@ -45,7 +46,7 @@ export default function Subscription() {
     setVerifying(true);
     try {
       await subscriptionsApi.verify(refInput.trim());
-      toast.success('Subscription renewed! ✅');
+      toast.success('Subscription renewed!');
       setRefInput('');
       fetchStatus();
     } catch (err) {
@@ -78,7 +79,7 @@ export default function Subscription() {
       {/* Locked overlay */}
       {isLocked && (
         <div className="card p-8 bg-red-50 border-2 border-red-300 text-center animate-fade-in">
-          <div className="text-6xl mb-4 animate-bounce-soft">🔒</div>
+          <Lock className="w-16 h-16 mx-auto mb-4 text-red-500 animate-bounce-soft" />
           <h2 className="text-2xl font-extrabold text-red-800 mb-2">Access Locked</h2>
           <p className="text-red-600 mb-6">
             Your school's subscription has expired and the grace period has ended.
@@ -96,7 +97,9 @@ export default function Subscription() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">{isGrace ? '⚠️' : '✅'}</span>
+                {isGrace
+                  ? <AlertTriangle className="w-7 h-7 text-amber-500" />
+                  : <CheckCircle2 className="w-7 h-7 text-emerald-500" />}
                 <StatusBadge status={sub?.status} />
               </div>
               <h2 className="text-xl font-bold text-slate-800">
@@ -135,7 +138,7 @@ export default function Subscription() {
         <div className="grid md:grid-cols-2 gap-6">
           <div className="card p-6 animate-fade-in-up">
             <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-              💳 Renew Subscription
+              <CreditCard className="w-4 h-4" /> Renew Subscription
             </h3>
             <p className="text-sm text-slate-500 mb-4">
               Annual license: <strong>GHS 500</strong> · Payment via Paystack
@@ -145,7 +148,7 @@ export default function Subscription() {
 
           <div className="card p-6 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
             <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-              🔍 Verify Payment
+              <ShieldCheck className="w-4 h-4" /> Verify Payment
             </h3>
             <p className="text-sm text-slate-500 mb-4">
               After completing Paystack checkout, paste your reference to activate.
@@ -180,7 +183,7 @@ function RenewalForm({ email, setEmail, renewing, handleRenew }) {
         required
       />
       <Button type="submit" variant="primary" loading={renewing} className="w-full">
-        💳 Pay GHS 500 via Paystack
+        <CreditCard className="w-4 h-4" /> Pay GHS 500 via Paystack
       </Button>
     </form>
   );
