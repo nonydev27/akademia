@@ -18,6 +18,7 @@ import Grades               from './pages/SchoolAdmin/Grades';
 import PublishResults       from './pages/SchoolAdmin/PublishResults';
 import Communications       from './pages/SchoolAdmin/Communications';
 import Subscription         from './pages/SchoolAdmin/Subscription';
+import StaffManagement      from './pages/SchoolAdmin/StaffManagement';
 
 // Staff
 import StaffDashboard       from './pages/Staff/StaffDashboard';
@@ -57,6 +58,7 @@ export default function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/admin"                element={<AdminDashboard />} />
           <Route path="/admin/students"       element={<Students />} />
+          <Route path="/admin/staff"          element={<StaffManagement />} />
           <Route path="/admin/attendance"     element={<AdminAttendance />} />
           <Route path="/admin/fees"           element={<Fees />} />
           <Route path="/admin/grades"         element={<Grades />} />

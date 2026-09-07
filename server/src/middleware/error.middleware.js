@@ -29,6 +29,10 @@ export function errorMiddleware(err, req, res, next) {
       publicMessage = 'A record with that value already exists';
       details = { fields: err.meta?.target };
     }
+  } else if (err instanceof Prisma.PrismaClientInitializationError ||
+             err instanceof Prisma.PrismaClientRustPanicError) {
+    statusCode = 503;
+    publicMessage = 'Database temporarily unavailable. Please try again in a moment.';
   }
 
   logger.error(err.message, {

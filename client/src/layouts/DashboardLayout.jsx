@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import Logo from '../components/ui/Logo';
+import HelpDrawer       from '../components/ui/HelpDrawer';
+import FirstTimeOverlay from '../components/ui/FirstTimeOverlay';
 import {
-  GraduationCap, LayoutDashboard, School, Users, CheckSquare, Wallet,
+  LayoutDashboard, School, Users, CheckSquare, Wallet,
   NotebookPen, ClipboardCheck, Send, KeyRound, LogOut, ChevronLeft,
-  ChevronRight, Menu, AlertTriangle, ArrowRight,
+  ChevronRight, Menu, AlertTriangle, ArrowRight, HelpCircle, Users2,
 } from 'lucide-react';
 
 const ICON_SIZE = 'w-[18px] h-[18px]';
@@ -18,6 +21,7 @@ const NAV_SUPER_ADMIN = [
 const NAV_SCHOOL_ADMIN = [
   { to: '/admin',               icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
   { to: '/admin/students',      icon: <Users className={ICON_SIZE} />,           label: 'Students' },
+  { to: '/admin/staff',         icon: <Users2 className={ICON_SIZE} />,          label: 'Staff' },
   { to: '/admin/attendance',    icon: <CheckSquare className={ICON_SIZE} />,     label: 'Attendance' },
   { to: '/admin/fees',          icon: <Wallet className={ICON_SIZE} />,          label: 'Fees' },
   { to: '/admin/grades',        icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grades' },
@@ -49,6 +53,7 @@ export default function DashboardLayout() {
   const [collapsed, setCollapsed]  = useState(false);
   const [mobileOpen, setMobile]    = useState(false);
   const [subWarn]                  = useState(null);
+  const [helpOpen, setHelpOpen]    = useState(false);
 
   const nav = getNav(user?.role);
 
@@ -86,11 +91,7 @@ export default function DashboardLayout() {
         {/* Logo */}
         <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/10
                           ${collapsed ? 'justify-center' : ''}`}>
-          <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br
-                          from-brand-600 to-brand-800 flex items-center justify-center
-                          shadow-glow-blue">
-            <GraduationCap className="w-5 h-5 text-white" />
-          </div>
+          <Logo size={36} className="flex-shrink-0 shadow-glow-blue rounded-xl" />
           {!collapsed && (
             <div className="animate-fade-in">
               <div className="font-extrabold text-white text-base leading-none">Akademia</div>
@@ -184,6 +185,17 @@ export default function DashboardLayout() {
                 <AlertTriangle className="w-3.5 h-3.5" /> Grace Period
               </span>
             )}
+            {/* Help button */}
+            <button
+              onClick={() => setHelpOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                         bg-slate-100 hover:bg-brand-50 hover:text-brand-700
+                         text-slate-500 text-xs font-semibold transition-all duration-200"
+              title="Open help guide"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">Help</span>
+            </button>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-600 to-brand-800
                               flex items-center justify-center text-xs font-bold text-white">
@@ -218,6 +230,10 @@ export default function DashboardLayout() {
           </div>
         </main>
       </div>
+
+      {/* ── Global overlays ── */}
+      <HelpDrawer isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
+      <FirstTimeOverlay />
     </div>
   );
 }

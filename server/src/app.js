@@ -17,6 +17,7 @@ import gradeRoutes from './routes/grade.routes.js';
 import reportcardRoutes from './routes/reportcard.routes.js';
 import communicationRoutes from './routes/communication.routes.js';
 import subscriptionRoutes from './routes/subscription.routes.js';
+import staffRoutes from './routes/staff.routes.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 
 const app = express();
@@ -42,6 +43,7 @@ app.use('/api/v1/grades', gradeRoutes);
 app.use('/api/v1/report-cards', reportcardRoutes);
 app.use('/api/v1/communications', communicationRoutes);
 app.use('/api/v1/subscriptions', subscriptionRoutes);
+app.use('/api/v1/staff-members', staffRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 

@@ -90,7 +90,10 @@ model User {
   fullName   String
   email      String   @unique
   supabaseId String   @unique
+  active     Boolean  @default(true)
   createdAt  DateTime @default(now())
+
+  teacherAssignments TeacherClassSubject[]
 
   @@index([tenantId])
 }
@@ -129,7 +132,8 @@ model Class {
   tenantId String
   name     String
 
-  enrollments Enrollment[]
+  enrollments        Enrollment[]
+  teacherAssignments TeacherClassSubject[]
 
   @@index([tenantId])
 }
@@ -215,26 +219,57 @@ model Subject {
   tenantId String
   name     String
 
-  grades Grade[]
+  grades               Grade[]
+  teacherAssignments   TeacherClassSubject[]
 
   @@index([tenantId])
 }
 
+/// Assigns a teacher (STAFF user) to a specific class + subject.
+/// Only the assigned teacher (or any SCHOOL_ADMIN) may enter grades
+/// for that class/subject combination.
+model TeacherClassSubject {
+  id        String   @id @default(uuid())
+  teacher   User     @relation(fields: [teacherId], references: [id])
+  teacherId String
+  class     Class    @relation(fields: [classId], references: [id])
+  classId   String
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  subjectId String
+  createdAt DateTime @default(now())
+
+  @@unique([teacherId, classId, subjectId])
+  @@index([teacherId])
+  @@index([classId])
+  @@index([subjectId])
+}
+
+/// Multi-score grade record.
+/// caScore       = Continuous Assessment (class tests, quizzes, homework)
+/// midtermScore  = Mid-term / mid-semester examination
+/// examScore     = End-of-term / end-of-semester examination
+/// aggregate     = Weighted total (formula in grade.service.js)
 model Grade {
-  id          String    @id @default(uuid())
-  student     Student   @relation(fields: [studentId], references: [id])
-  studentId   String
-  subject     Subject   @relation(fields: [subjectId], references: [id])
-  subjectId   String
-  term        Term      @relation(fields: [termId], references: [id])
-  termId      String
-  caScore     Float?
-  examScore   Float?
-  aggregate   Float?
-  finalized   Boolean   @default(false)
-  finalizedAt DateTime?
+  id            String    @id @default(uuid())
+  student       Student   @relation(fields: [studentId], references: [id])
+  studentId     String
+  subject       Subject   @relation(fields: [subjectId], references: [id])
+  subjectId     String
+  term          Term      @relation(fields: [termId], references: [id])
+  termId        String
+  caScore       Float?    // Continuous Assessment
+  midtermScore  Float?    // Mid-term / mid-semester exam
+  examScore     Float?    // End-of-term / end-of-semester exam
+  aggregate     Float?    // Computed weighted total
+  remarks       String?   // Optional teacher remarks
+  finalized     Boolean   @default(false)
+  finalizedAt   DateTime?
+  enteredById   String?   // userId of who last saved
 
   @@unique([studentId, subjectId, termId])
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([termId])
 }
 
 // --- Fees ---

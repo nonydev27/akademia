@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { GraduationCap } from 'lucide-react';
+import Logo from '../components/ui/Logo';
 
 function getRoleDashboard(role) {
   if (role === 'SUPER_ADMIN')  return '/super-admin';
@@ -18,9 +18,7 @@ export default function ProtectedRoute({ allowedRoles }) {
       <div className="min-h-screen flex items-center justify-center"
            style={{ background: 'linear-gradient(135deg, #0f172a, #1e3a5f)' }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-brand-700 flex items-center justify-center animate-bounce-soft">
-            <GraduationCap className="w-6 h-6 text-white" />
-          </div>
+          <Logo size={48} className="animate-bounce-soft rounded-2xl" />
           <div className="flex gap-1.5">
             <div className="w-2 h-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '0ms' }} />
             <div className="w-2 h-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '150ms' }} />

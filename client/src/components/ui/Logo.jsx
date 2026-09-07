@@ -1,0 +1,37 @@
+import { useId } from 'react';
+
+export default function Logo({ size = 40, className = '' }) {
+  const gradId = useId();
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 40 40"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      role="img"
+      aria-label="Akademia"
+    >
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#2563eb" />
+          <stop offset="55%" stopColor="#7c3aed" />
+          <stop offset="100%" stopColor="#f59e0b" />
+        </linearGradient>
+      </defs>
+      <rect width="40" height="40" rx="11" fill={`url(#${gradId})`} />
+      {/* mortarboard top */}
+      <polygon points="20,10 31,15.5 20,21 9,15.5" fill="#fff" />
+      {/* head / band */}
+      <path
+        d="M13,17.3 L13,23 C13,25.5 16.1,27.6 20,27.6 C23.9,27.6 27,25.5 27,23 L27,17.3 L20,20.8 Z"
+        fill="#fff"
+        fillOpacity="0.92"
+      />
+      {/* tassel */}
+      <line x1="31" y1="15.5" x2="31" y2="21.5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="31" cy="23" r="1.8" fill="#fde68a" />
+    </svg>
+  );
+}

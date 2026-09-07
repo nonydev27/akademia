@@ -1,10 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { GraduationCap, Mail, Lock, Eye, EyeOff, ShieldCheck, School, BookOpen, ArrowRight, Loader2 } from 'lucide-react';
+import Logo from '../../components/ui/Logo';
+import Button from '../../components/ui/Button';
+import {
+  Mail, Lock, Eye, EyeOff, ShieldCheck, School, BookOpen, ArrowRight,
+  Users, Wallet, NotebookPen, Send,
+} from 'lucide-react';
 
-// Floating particles data
+// Floating particles data (left panel only)
 const PARTICLES = Array.from({ length: 18 }).map((_, i) => ({
   id: i,
   size: 4 + Math.random() * 20,
@@ -13,6 +18,13 @@ const PARTICLES = Array.from({ length: 18 }).map((_, i) => ({
   duration: 8 + Math.random() * 12,
   color: i % 3 === 0 ? '#f59e0b' : i % 3 === 1 ? '#3b82f6' : '#a78bfa',
 }));
+
+const FEATURES = [
+  { Icon: Users,       label: 'Students & Attendance', sub: 'One roster across Primary, JHS and SHS' },
+  { Icon: Wallet,      label: 'Fees & Result Intercept', sub: 'Report cards withheld automatically until fees clear' },
+  { Icon: NotebookPen, label: 'Grading & Report Cards', sub: 'CA + exam aggregation, finalized once and locked' },
+  { Icon: Send,        label: 'Parent Communications', sub: 'Email and SMS notices sent the moment results publish' },
+];
 
 const DEMO_ACCOUNTS = [
   { label: 'Super Admin',  email: 'superadmin@akademia.app', pass: 'ChangeMe123!', Icon: ShieldCheck },
@@ -36,12 +48,9 @@ export default function Login() {
   const [shake, setShake]     = useState(false);
   const [showPass, setShow]   = useState(false);
   const [mounted, setMounted] = useState(false);
-  const formRef = useRef(null);
 
-  // Stagger entrance
   useEffect(() => { setTimeout(() => setMounted(true), 60); }, []);
 
-  // If already logged in, redirect
   useEffect(() => {
     if (user) navigate(getRoleDashboard(user.role), { replace: true });
   }, [user, navigate]);
@@ -57,8 +66,7 @@ export default function Login() {
     try {
       const u = await login(email, password);
       toast.success(`Welcome back, ${u.fullName.split(' ')[0]}!`);
-      // Brief success animation before redirect
-      setTimeout(() => navigate(getRoleDashboard(u.role), { replace: true }), 600);
+      setTimeout(() => navigate(getRoleDashboard(u.role), { replace: true }), 500);
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Invalid email or password';
       toast.error(msg);
@@ -70,172 +78,152 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden"
-         style={{ background: 'linear-gradient(135deg, #020617 0%, #0f172a 40%, #1e3a5f 80%, #172554 100%)' }}>
+    <div className="min-h-screen flex bg-white">
 
-      {/* ── Animated Particles ── */}
-      <div className="particles-bg">
-        {PARTICLES.map((p) => (
-          <div
-            key={p.id}
-            className="particle"
-            style={{
-              width:  p.size,
-              height: p.size,
-              left:   `${p.x}%`,
-              background: p.color,
-              animationDuration: `${p.duration}s`,
-              animationDelay:    `${p.delay}s`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* ── Glow orbs ── */}
-      <div className="absolute top-1/4 -left-32 w-80 h-80 rounded-full opacity-10 animate-float"
-           style={{ background: 'radial-gradient(circle, #3b82f6, transparent)' }} />
-      <div className="absolute bottom-1/4 -right-32 w-96 h-96 rounded-full opacity-10 animate-float-delay"
-           style={{ background: 'radial-gradient(circle, #f59e0b, transparent)' }} />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-5 animate-spin-slow"
-           style={{ background: 'conic-gradient(from 0deg, #3b82f6, #a78bfa, #f59e0b, #3b82f6)' }} />
-
-      {/* ── Login Card ── */}
+      {/* ── Left: brand / marketing panel (hidden on small screens) ── */}
       <div
-        ref={formRef}
-        className={`relative z-10 w-full max-w-md mx-4 glass-panel p-8 sm:p-10
-                    transition-all duration-700
-                    ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}
-                    ${shake ? 'animate-shake' : ''}`}
+        className="hidden lg:flex lg:w-[55%] xl:w-3/5 relative overflow-hidden flex-col justify-between p-12 xl:p-16"
+        style={{ background: 'linear-gradient(135deg, #020617 0%, #0f172a 40%, #1e3a5f 80%, #172554 100%)' }}
       >
-        {/* Logo */}
-        <div className={`text-center mb-8 transition-all duration-700 delay-100
-                         ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4
-                          bg-gradient-to-br from-brand-600 to-brand-800
-                          shadow-glow-blue animate-glow">
-            <GraduationCap className="w-8 h-8 text-white" strokeWidth={2} />
-          </div>
-          <h1 className="text-3xl font-extrabold gradient-text tracking-tight">
-            Akademia
-          </h1>
-          <p className="text-slate-400 text-sm mt-2 font-medium tracking-wide">
-            Simplifying School Management
-          </p>
+        <div className="particles-bg">
+          {PARTICLES.map((p) => (
+            <div
+              key={p.id}
+              className="particle"
+              style={{
+                width: p.size, height: p.size, left: `${p.x}%`, background: p.color,
+                animationDuration: `${p.duration}s`, animationDelay: `${p.delay}s`,
+              }}
+            />
+          ))}
+        </div>
+        <div className="absolute top-1/4 -left-32 w-80 h-80 rounded-full opacity-10 animate-float"
+             style={{ background: 'radial-gradient(circle, #3b82f6, transparent)' }} />
+        <div className="absolute bottom-1/4 -right-32 w-96 h-96 rounded-full opacity-10 animate-float-delay"
+             style={{ background: 'radial-gradient(circle, #f59e0b, transparent)' }} />
+
+        {/* Brand */}
+        <div className="relative z-10 flex items-center gap-3 animate-fade-in">
+          <Logo size={44} className="shadow-glow-blue rounded-2xl" />
+          <span className="text-xl font-extrabold text-white tracking-tight">Akademia</span>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
-          <div className={`transition-all duration-700 delay-200
-                           ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input
-                className="login-input w-full bg-white/10 border border-white/10 text-white
-                           rounded-xl px-4 py-3 pl-10 text-sm placeholder-slate-500
-                           focus:outline-none focus:border-brand-400 focus:bg-white/15
-                           transition-all duration-300"
-                type="email"
-                placeholder="you@school.edu"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-              />
-            </div>
-          </div>
+        {/* Headline + features */}
+        <div className="relative z-10 max-w-lg animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+          <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
+            Run your whole school<br />from one clean system.
+          </h1>
+          <p className="text-slate-400 text-base mb-10">
+            Attendance, fees, grading, and result publishing for Primary, JHS and SHS —
+            multi-tenant, subscription-licensed, and built around a strict fee-before-results rule.
+          </p>
 
-          {/* Password */}
-          <div className={`transition-all duration-700 delay-300
-                           ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input
-                className="login-input w-full bg-white/10 border border-white/10 text-white
-                           rounded-xl px-4 py-3 pl-10 pr-12 text-sm placeholder-slate-500
-                           focus:outline-none focus:border-brand-400 focus:bg-white/15
-                           transition-all duration-300"
-                type={showPass ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPass(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShow(!showPass)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white
-                           transition-colors duration-200"
-                aria-label={showPass ? 'Hide password' : 'Show password'}
-              >
-                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Submit */}
-          <div className={`transition-all duration-700 delay-[400ms]
-                           ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <button
-              type="submit"
-              disabled={loading}
-              className="ripple-container w-full py-3.5 rounded-xl font-bold text-sm
-                         bg-gradient-to-r from-brand-700 via-brand-600 to-brand-700
-                         bg-[length:200%_100%] text-white
-                         hover:bg-right-center hover:shadow-glow-blue
-                         active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed
-                         transition-all duration-300 shadow-lg
-                         flex items-center justify-center gap-2"
-              style={{ backgroundPosition: loading ? 'right' : 'left' }}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="animate-spin w-4 h-4" />
-                  Signing in…
-                </>
-              ) : (
-                <>
-                  Sign In
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-
-        {/* Demo hints */}
-        <div className={`mt-8 pt-6 border-t border-white/10 text-center transition-all duration-700 delay-500
-                         ${mounted ? 'opacity-100' : 'opacity-0'}`}>
-          <p className="text-xs text-slate-500 font-medium mb-3 uppercase tracking-widest">Demo Accounts</p>
-          <div className="grid grid-cols-3 gap-2">
-            {DEMO_ACCOUNTS.map((d) => (
-              <button
-                key={d.label}
-                type="button"
-                onClick={() => { setEmail(d.email); setPass(d.pass); }}
-                className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl
-                           bg-white/5 hover:bg-white/10 border border-white/10
-                           text-slate-400 hover:text-white text-xs
-                           transition-all duration-200 active:scale-95"
-              >
-                <d.Icon className="w-4 h-4" />
-                {d.label}
-              </button>
+          <div className="space-y-5">
+            {FEATURES.map(({ Icon, label, sub }, i) => (
+              <div key={label} className="flex items-start gap-4 animate-fade-in-up"
+                   style={{ animationDelay: `${180 + i * 90}ms` }}>
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/10 border border-white/10
+                                flex items-center justify-center">
+                  <Icon className="w-5 h-5 text-brand-300" />
+                </div>
+                <div>
+                  <div className="text-white font-semibold text-sm">{label}</div>
+                  <div className="text-slate-400 text-sm">{sub}</div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-slate-600 mt-6">
+        <p className="relative z-10 text-xs text-slate-600">
           Akademia v1.0 · Multi-tenant School Management
         </p>
+      </div>
+
+      {/* ── Right: login form ── */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12 sm:px-12 bg-white">
+        <div className={`w-full max-w-sm transition-all duration-700
+                         ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
+                         ${shake ? 'animate-shake' : ''}`}>
+
+          {/* Mobile-only brand */}
+          <div className="lg:hidden flex items-center gap-3 mb-10">
+            <Logo size={40} />
+            <span className="text-lg font-extrabold text-slate-900 tracking-tight">Akademia</span>
+          </div>
+
+          <div className="mb-8">
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Welcome back</h2>
+            <p className="text-slate-500 text-sm mt-1">Sign in to your school's dashboard</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="label">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  className="input pl-10"
+                  type="email"
+                  placeholder="you@school.edu"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  className="input pl-10 pr-11"
+                  type={showPass ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPass(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShow(!showPass)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  aria-label={showPass ? 'Hide password' : 'Show password'}
+                >
+                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full mt-2">
+              Sign In <ArrowRight className="w-4 h-4" />
+            </Button>
+          </form>
+
+          {/* Demo hints */}
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            <p className="text-xs text-slate-400 font-medium mb-3 uppercase tracking-widest">Demo Accounts</p>
+            <div className="grid grid-cols-3 gap-2">
+              {DEMO_ACCOUNTS.map((d) => (
+                <button
+                  key={d.label}
+                  type="button"
+                  onClick={() => { setEmail(d.email); setPass(d.pass); }}
+                  className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl
+                             bg-slate-50 hover:bg-slate-100 border border-slate-200
+                             text-slate-500 hover:text-slate-800 text-xs font-medium
+                             transition-all duration-200 active:scale-95"
+                >
+                  <d.Icon className="w-4 h-4" />
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
