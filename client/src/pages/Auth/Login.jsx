@@ -136,7 +136,7 @@ export default function Login() {
         </div>
 
         <p className="relative z-10 text-xs text-slate-600">
-          Akademia v1.0 · Multi-tenant School Management
+          Akademia 1.0 · Multi-tenant School Management
         </p>
       </div>
 
@@ -154,7 +154,7 @@ export default function Login() {
 
           <div className="mb-8">
             <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Welcome back</h2>
-            <p className="text-slate-500 text-sm mt-1">Sign in to your school's dashboard</p>
+             <p className="text-slate-500 text-sm mt-1">Sign in to your school's dashboard</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">

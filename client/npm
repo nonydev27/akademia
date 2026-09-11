@@ -1,0 +1,5 @@
+      PID    PPID    PGID     WINPID   TTY         UID    STIME COMMAND
+      764     662     764      17940  cons2     197608   Sep  9 /c/Users/user/AppData/Local/Kiro-Cli/kiro-cli
+      915     853     915      24044  cons0     197608 20:45:53 /usr/bin/PS
+      662       1     662      17224  cons2     197608   Sep  9 /usr/bin/bash
+      853       1     853      15880  cons0     197608 20:45:30 /usr/bin/bash

@@ -4,6 +4,18 @@
 
 import { z } from 'zod';
 
+/**
+ * optionalInt — coerces a value to a number with a given default, but treats
+ * an empty string (or undefined/null) as "not set" so the default is used
+ * instead of coercing "" → 0.
+ */
+function optionalInt(defaultValue) {
+  return z.preprocess(
+    (val) => (val === '' || val == null ? undefined : val),
+    z.coerce.number().int().default(defaultValue),
+  );
+}
+
 const schema = z.object({
   PORT: z.coerce.number().default(5000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -20,7 +32,7 @@ const schema = z.object({
   EMAIL_PROVIDER: z.enum(['resend', 'smtp']).default('resend'),
   RESEND_API_KEY: z.string().optional().default(''),
   SMTP_HOST: z.string().optional().default(''),
-  SMTP_PORT: z.coerce.number().optional().default(587),
+  SMTP_PORT: optionalInt(587),
   SMTP_USER: z.string().optional().default(''),
   SMTP_PASS: z.string().optional().default(''),
   EMAIL_FROM: z.string().default('Akademia <no-reply@akademia.app>'),
@@ -35,7 +47,7 @@ const schema = z.object({
   PAYSTACK_SECRET_KEY: z.string().optional().default(''),
   FLUTTERWAVE_SECRET_KEY: z.string().optional().default(''),
 
-  SUBSCRIPTION_GRACE_PERIOD_DAYS: z.coerce.number().int().min(7).max(14).default(14),
+  SUBSCRIPTION_GRACE_PERIOD_DAYS: optionalInt(14),
 
   SEED_SUPER_ADMIN_EMAIL: z.string().email().optional().default('superadmin@akademia.app'),
   SEED_SUPER_ADMIN_PASSWORD: z.string().optional().default('ChangeMe123!'),
