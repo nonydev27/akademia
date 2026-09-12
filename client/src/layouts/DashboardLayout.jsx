@@ -9,6 +9,7 @@ import {
   LayoutDashboard, School, Users, CheckSquare, Wallet,
   NotebookPen, ClipboardCheck, Send, KeyRound, LogOut, ChevronLeft,
   ChevronRight, Menu, AlertTriangle, ArrowRight, HelpCircle, Users2,
+  BookOpen, UserCircle, Building2,
 } from 'lucide-react';
 
 const ICON_SIZE = 'w-[18px] h-[18px]';
@@ -19,21 +20,24 @@ const NAV_SUPER_ADMIN = [
 ];
 
 const NAV_SCHOOL_ADMIN = [
-  { to: '/admin',               icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
-  { to: '/admin/students',      icon: <Users className={ICON_SIZE} />,           label: 'Students' },
-  { to: '/admin/staff',         icon: <Users2 className={ICON_SIZE} />,          label: 'Staff' },
-  { to: '/admin/attendance',    icon: <CheckSquare className={ICON_SIZE} />,     label: 'Attendance' },
-  { to: '/admin/fees',          icon: <Wallet className={ICON_SIZE} />,          label: 'Fees' },
-  { to: '/admin/grades',        icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grades' },
-  { to: '/admin/results',       icon: <ClipboardCheck className={ICON_SIZE} />,  label: 'Publish Results' },
-  { to: '/admin/communications',icon: <Send className={ICON_SIZE} />,           label: 'Communications' },
-  { to: '/admin/subscription',  icon: <KeyRound className={ICON_SIZE} />,        label: 'Subscription' },
+  { to: '/admin',                icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
+  { to: '/admin/students',       icon: <Users className={ICON_SIZE} />,           label: 'Students' },
+  { to: '/admin/staff',          icon: <Users2 className={ICON_SIZE} />,          label: 'Staff' },
+  { to: '/admin/subjects',       icon: <BookOpen className={ICON_SIZE} />,        label: 'Subjects' },
+  { to: '/admin/attendance',     icon: <CheckSquare className={ICON_SIZE} />,     label: 'Attendance' },
+  { to: '/admin/fees',           icon: <Wallet className={ICON_SIZE} />,          label: 'Fees' },
+  { to: '/admin/grades',         icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grades' },
+  { to: '/admin/results',        icon: <ClipboardCheck className={ICON_SIZE} />,  label: 'Publish Results' },
+  { to: '/admin/communications', icon: <Send className={ICON_SIZE} />,            label: 'Communications' },
+  { to: '/admin/subscription',   icon: <KeyRound className={ICON_SIZE} />,        label: 'Subscription' },
+  { to: '/admin/profile',        icon: <UserCircle className={ICON_SIZE} />,      label: 'My Profile' },
 ];
 
 const NAV_STAFF = [
   { to: '/staff',               icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
   { to: '/staff/attendance',    icon: <CheckSquare className={ICON_SIZE} />,     label: 'Mark Attendance' },
   { to: '/staff/grades',        icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grade Entry' },
+  { to: '/staff/profile',       icon: <UserCircle className={ICON_SIZE} />,      label: 'My Profile' },
 ];
 
 function getNav(role) {
@@ -48,12 +52,11 @@ function initials(name = '') {
 }
 
 export default function DashboardLayout() {
-  const { user, logout }          = useAuth();
-  const navigate                   = useNavigate();
-  const [collapsed, setCollapsed]  = useState(false);
-  const [mobileOpen, setMobile]    = useState(false);
-  const [subWarn]                  = useState(null);
-  const [helpOpen, setHelpOpen]    = useState(false);
+  const { user, logout }         = useAuth();
+  const navigate                  = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobile]   = useState(false);
+  const [helpOpen, setHelpOpen]   = useState(false);
 
   const nav = getNav(user?.role);
 
@@ -72,25 +75,21 @@ export default function DashboardLayout() {
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
 
-      {/* ── Mobile overlay ── */}
+      {/* Mobile overlay */}
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/60 md:hidden animate-fade-in"
-          onClick={() => setMobile(false)}
-        />
+        <div className="fixed inset-0 z-20 bg-black/60 md:hidden animate-fade-in"
+             onClick={() => setMobile(false)} />
       )}
 
-      {/* ── Sidebar ── */}
+      {/* Sidebar */}
       <aside
-        className={`fixed md:relative z-30 flex flex-col h-full
-                    transition-all duration-300 ease-in-out
+        className={`fixed md:relative z-30 flex flex-col h-full transition-all duration-300 ease-in-out
                     ${collapsed ? 'w-16' : 'w-60'}
                     ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)' }}
       >
         {/* Logo */}
-        <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/10
-                          ${collapsed ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/10 ${collapsed ? 'justify-center' : ''}`}>
           <Logo size={36} className="flex-shrink-0 shadow-glow-blue rounded-xl" />
           {!collapsed && (
             <div className="animate-fade-in">
@@ -107,18 +106,14 @@ export default function DashboardLayout() {
               key={item.to}
               to={item.to}
               end={item.to.split('/').length <= 2}
-              className={({ isActive }) =>
-                `nav-item group ${isActive ? 'active' : ''}`
-              }
+              className={({ isActive }) => `nav-item group ${isActive ? 'active' : ''}`}
               style={{ animationDelay: `${i * 60}ms` }}
               onClick={() => setMobile(false)}
             >
               <span className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                 {item.icon}
               </span>
-              {!collapsed && (
-                <span className="animate-fade-in truncate">{item.label}</span>
-              )}
+              {!collapsed && <span className="animate-fade-in truncate">{item.label}</span>}
             </NavLink>
           ))}
         </nav>
@@ -154,44 +149,38 @@ export default function DashboardLayout() {
           >
             {collapsed
               ? <ChevronRight className="w-[18px] h-[18px] flex-shrink-0" />
-              : <ChevronLeft className="w-[18px] h-[18px] flex-shrink-0" />}
+              : <ChevronLeft  className="w-[18px] h-[18px] flex-shrink-0" />}
             {!collapsed && <span>Collapse</span>}
           </button>
         </div>
       </aside>
 
-      {/* ── Main content ── */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* Top bar */}
         <header className="flex items-center gap-4 px-6 py-4 bg-white border-b border-slate-200 flex-shrink-0">
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden text-slate-600 hover:text-slate-900 p-1"
-            onClick={() => setMobile(!mobileOpen)}
-          >
+          <button className="md:hidden text-slate-600 hover:text-slate-900 p-1" onClick={() => setMobile(!mobileOpen)}>
             <Menu className="w-6 h-6" />
           </button>
 
-          {/* Page title from breadcrumb */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex flex-col">
             <BreadCrumb />
+            {/* School name shown for admin and staff */}
+            {user?.tenantName && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                <span className="text-xs text-slate-500 font-medium truncate">{user.tenantName}</span>
+              </div>
+            )}
           </div>
 
-          {/* User chip */}
           <div className="flex items-center gap-3">
-            {subWarn && (
-              <span className="badge-expired text-xs hidden sm:inline-flex gap-1 items-center">
-                <AlertTriangle className="w-3.5 h-3.5" /> Grace Period
-              </span>
-            )}
-            {/* Help button */}
             <button
               onClick={() => setHelpOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg
                          bg-slate-100 hover:bg-brand-50 hover:text-brand-700
                          text-slate-500 text-xs font-semibold transition-all duration-200"
-              title="Open help guide"
             >
               <HelpCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Help</span>
@@ -209,21 +198,6 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        {/* Subscription warning banner */}
-        {subWarn && (
-          <div className="sub-warning mx-6 mt-4 animate-fade-in-down">
-            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-            <span>
-              <strong>Subscription Grace Period:</strong> Your subscription has expired.
-              You have {subWarn} days remaining before access is locked.
-              <a href="/admin/subscription" className="ml-2 underline font-semibold hover:text-amber-900 inline-flex items-center gap-1">
-                Renew now <ArrowRight className="w-3.5 h-3.5" />
-              </a>
-            </span>
-          </div>
-        )}
-
-        {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6">
           <div className="page-enter">
             <Outlet />
@@ -231,7 +205,6 @@ export default function DashboardLayout() {
         </main>
       </div>
 
-      {/* ── Global overlays ── */}
       <HelpDrawer isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
       <FirstTimeOverlay />
     </div>
@@ -242,9 +215,6 @@ function BreadCrumb() {
   const location = useLocation();
   const parts = location.pathname.split('/').filter(Boolean);
   const label = parts[parts.length - 1] || 'Dashboard';
-  const readable = label
-    .split('-')
-    .map((w) => w[0].toUpperCase() + w.slice(1))
-    .join(' ');
+  const readable = label.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
   return <h1 className="text-lg font-bold text-slate-800 truncate">{readable}</h1>;
 }

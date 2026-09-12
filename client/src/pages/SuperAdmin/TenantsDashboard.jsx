@@ -8,7 +8,7 @@ import StatusBadge   from '../../components/ui/StatusBadge';
 import Modal         from '../../components/ui/Modal';
 import Button        from '../../components/ui/Button';
 import Input         from '../../components/ui/Input';
-import { School, CheckCircle2, AlertTriangle, Lock, ArrowRight, Plus, PartyPopper } from 'lucide-react';
+import { School, CheckCircle2, AlertTriangle, Lock, ArrowRight, Plus } from 'lucide-react';
 
 export default function TenantsDashboard() {
   const navigate = useNavigate();
@@ -19,6 +19,7 @@ export default function TenantsDashboard() {
   const [form, setForm]         = useState({
     schoolName: '', schoolLevel: 'JHS',
     adminFullName: '', adminEmail: '', adminPassword: '',
+    adminPhone: '', adminContact: '',
   });
   const [saving, setSaving]     = useState(false);
 
@@ -52,9 +53,9 @@ export default function TenantsDashboard() {
     setSaving(true);
     try {
       await tenantsApi.create(form);
-      toast.success(`${form.schoolName} added successfully!`, { icon: <PartyPopper className="w-4 h-4" /> });
+      toast.success(`${form.schoolName} added successfully!`);
       setShowAdd(false);
-      setForm({ schoolName: '', schoolLevel: 'JHS', adminFullName: '', adminEmail: '', adminPassword: '' });
+      setForm({ schoolName: '', schoolLevel: 'JHS', adminFullName: '', adminEmail: '', adminPassword: '', adminPhone: '', adminContact: '' });
       fetchTenants();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to add school');
@@ -152,6 +153,12 @@ export default function TenantsDashboard() {
                 onChange={(e) => setForm({ ...form, adminFullName: e.target.value })} required />
               <Input label="Admin Email" type="email" value={form.adminEmail}
                 onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} required />
+              <Input label="Admin Phone Number" type="tel" value={form.adminPhone}
+                placeholder="e.g. 0244123456"
+                onChange={(e) => setForm({ ...form, adminPhone: e.target.value })} />
+              <Input label="Admin Contact / Notes" value={form.adminContact}
+                placeholder="e.g. WhatsApp, office extension…"
+                onChange={(e) => setForm({ ...form, adminContact: e.target.value })} />
               <Input label="Admin Password" type="password" value={form.adminPassword}
                 onChange={(e) => setForm({ ...form, adminPassword: e.target.value })}
                 placeholder="Min 8 characters" required />

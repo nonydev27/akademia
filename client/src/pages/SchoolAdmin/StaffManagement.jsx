@@ -75,7 +75,7 @@ function TeachersTab() {
   const [saving, setSaving]     = useState(false);
   const [deactivating, setDeactivating] = useState(null);
 
-  const [form, setForm] = useState({ fullName: '', email: '', password: '' });
+  const [form, setForm] = useState({ fullName: '', email: '', password: '', phone: '' });
 
   const fetchTeachers = useCallback(async () => {
     setLoading(true);
@@ -100,11 +100,9 @@ function TeachersTab() {
     setSaving(true);
     try {
       await staffApi.create(form);
-      toast.success(`Teacher account created for ${form.fullName}!`, {
-        icon: <CheckCircle2 className="w-4 h-4" />,
-      });
+      toast.success(`Teacher account created for ${form.fullName}!`);
       setShowAdd(false);
-      setForm({ fullName: '', email: '', password: '' });
+      setForm({ fullName: '', email: '', password: '', phone: '' });
       fetchTeachers();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create teacher');
@@ -276,6 +274,20 @@ function TeachersTab() {
               value={form.email}
               onChange={handleFormChange}
               required
+            />
+          </div>
+
+          <div>
+            <label className="label flex items-center gap-1.5">
+              Phone Number
+              <Tooltip tip="Optional. Used for contact purposes." />
+            </label>
+            <Input
+              type="tel"
+              name="phone"
+              placeholder="e.g. 0244123456"
+              value={form.phone}
+              onChange={handleFormChange}
             />
           </div>
 

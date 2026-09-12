@@ -1,137 +1,177 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { attendanceApi } from '../../api/attendance';
+import { subjectsApi }   from '../../api/subjects';
 import Button from '../../components/ui/Button';
-import { Save, Keyboard, ArrowUpDown } from 'lucide-react';
-
-const STATUS_CONFIG = {
-  PRESENT: { label: 'Present', bg: 'bg-emerald-100 border-emerald-400 text-emerald-700', row: 'bg-emerald-50' },
-  ABSENT:  { label: 'Absent',  bg: 'bg-red-100 border-red-400 text-red-700',             row: 'bg-red-50/50' },
-  TARDY:   { label: 'Tardy',   bg: 'bg-amber-100 border-amber-400 text-amber-700',       row: 'bg-amber-50/50' },
-};
+import { KeyRound, CheckCircle2, UserCheck, UserX, Save, CalendarDays } from 'lucide-react';
 
 export default function StaffAttendance() {
-  const [classId, setClassId] = useState('');
-  const [date, setDate]       = useState(new Date().toISOString().split('T')[0]);
-  const [roster, setRoster]   = useState([]);   // [{ student, status }]
-  const [marks, setMarks]     = useState({});   // { studentId: 'PRESENT'|'ABSENT'|'TARDY' }
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving]   = useState(false);
-  const [focusIdx, setFocusIdx] = useState(0);
+  // PIN gate
+  const [subjectCode, setSubjectCode] = useState('');
+  const [pin,         setPin]         = useState('');
+  const [verifying,   setVerifying]   = useState(false);
+  const [verified,    setVerified]    = useState(null);
+
+  // Roster state
+  const [classId,  setClassId]  = useState('');
+  const [date,     setDate]     = useState(new Date().toISOString().slice(0, 10));
+  const [roster,   setRoster]   = useState([]);   // [{ student, status }]
+  const [marks,    setMarks]    = useState({});    // { studentId: 'PRESENT'|'ABSENT' }
+  const [loading,  setLoading]  = useState(false);
+  const [saving,   setSaving]   = useState(false);
+
+  async function handleVerify(e) {
+    e.preventDefault();
+    if (!/^\d{4}$/.test(pin)) { toast.error('PIN must be 4 digits'); return; }
+    setVerifying(true);
+    try {
+      const res = await subjectsApi.verifyByCode(subjectCode.trim().toUpperCase(), pin);
+      setVerified(res.data.subject);
+      toast.success(`Verified — ${res.data.subject.name}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Verification failed');
+    } finally { setVerifying(false); }
+  }
 
   async function loadRoster() {
     if (!classId.trim()) { toast.error('Enter a Class ID'); return; }
     setLoading(true);
     try {
-      const res = await attendanceApi.forClass(classId, date);
-      const r   = res.data.roster;
-      setRoster(r);
-      const initial = {};
-      r.forEach((item) => { initial[item.student.id] = item.status || 'PRESENT'; });
-      setMarks(initial);
-      setFocusIdx(0);
-    } catch { toast.error('Failed to load roster'); }
-    finally { setLoading(false); }
+      const res = await attendanceApi.forClass(classId.trim(), date, verified.id);
+      const rows = res.data.roster;
+      setRoster(rows);
+      // Pre-fill existing marks
+      const init = {};
+      rows.forEach((r) => { if (r.status) init[r.student.id] = r.status; });
+      setMarks(init);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load class');
+    } finally { setLoading(false); }
   }
 
-  // Keyboard shortcuts: P / A / T cycle through students
-  const handleKey = useCallback((e) => {
-    if (!roster.length) return;
-    const student = roster[focusIdx]?.student;
-    if (!student) return;
-    const key = e.key.toUpperCase();
-    if (['P', 'A', 'T'].includes(key)) {
-      const statusMap = { P: 'PRESENT', A: 'ABSENT', T: 'TARDY' };
-      setMarks((m) => ({ ...m, [student.id]: statusMap[key] }));
-      setFocusIdx((i) => Math.min(i + 1, roster.length - 1));
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setFocusIdx((i) => Math.min(i + 1, roster.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setFocusIdx((i) => Math.max(i - 1, 0));
-    }
-  }, [roster, focusIdx]);
+  function toggle(studentId, status) {
+    setMarks((prev) => ({ ...prev, [studentId]: status }));
+  }
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [handleKey]);
+  function markAll(status) {
+    const all = {};
+    roster.forEach((r) => { all[r.student.id] = status; });
+    setMarks(all);
+  }
 
   async function handleSubmit() {
-    if (!roster.length) return;
+    const records = roster.map((r) => ({
+      studentId: r.student.id,
+      status:    marks[r.student.id] || 'ABSENT',
+    }));
+    if (!records.length) { toast.error('No students to mark'); return; }
     setSaving(true);
     try {
-      const records = Object.entries(marks).map(([studentId, status]) => ({ studentId, status }));
-      await attendanceApi.submit({ date, records });
-      toast.success(`Attendance saved for ${records.length} students`);
+      await attendanceApi.submit({ date, subjectId: verified.id, records });
+      toast.success('Attendance submitted successfully');
+      await loadRoster();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save attendance');
+      toast.error(err.response?.data?.message || 'Failed to submit attendance');
     } finally { setSaving(false); }
   }
 
-  const counts = { PRESENT: 0, ABSENT: 0, TARDY: 0 };
-  Object.values(marks).forEach((s) => { if (counts[s] != null) counts[s]++; });
+  const presentCount = Object.values(marks).filter((s) => s === 'PRESENT').length;
+  const absentCount  = Object.values(marks).filter((s) => s === 'ABSENT').length;
+
+  // PIN gate screen
+  if (!verified) {
+    return (
+      <div className="max-w-md mx-auto mt-8">
+        <div className="card p-8 text-center">
+          <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <KeyRound className="w-8 h-8 text-brand-600" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Subject Verification</h2>
+          <p className="text-sm text-slate-500 mb-6">
+            Enter your subject code and PIN to mark attendance.
+          </p>
+          <form onSubmit={handleVerify} className="space-y-4 text-left">
+            <div>
+              <label className="label">Subject Code</label>
+              <input className="input uppercase" placeholder="e.g. ENGL01"
+                value={subjectCode} onChange={(e) => setSubjectCode(e.target.value.toUpperCase())} required />
+            </div>
+            <div>
+              <label className="label">4-Digit PIN</label>
+              <input type="password" inputMode="numeric" maxLength={4}
+                className="input text-center text-2xl font-mono tracking-widest"
+                placeholder="••••"
+                value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} required />
+            </div>
+            <Button type="submit" variant="primary" loading={verifying} className="w-full">
+              <CheckCircle2 className="w-4 h-4" /> Verify &amp; Continue
+            </Button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="page-header">
         <div>
           <h1 className="page-title">Mark Attendance</h1>
-          <p className="page-subtitle">Use P / A / T keys to mark quickly</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-sm font-semibold text-brand-700">{verified.name}</span>
+            <code className="text-xs bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded font-mono">{verified.code}</code>
+            <button onClick={() => { setVerified(null); setPin(''); setRoster([]); }}
+              className="text-xs text-slate-400 hover:text-red-500 ml-2 underline">
+              Switch subject
+            </button>
+          </div>
         </div>
         {roster.length > 0 && (
-          <Button variant="accent" loading={saving} onClick={handleSubmit}>
-            <Save className="w-4 h-4" /> Save Attendance
+          <Button variant="primary" loading={saving} onClick={handleSubmit}>
+            <Save className="w-4 h-4" /> Submit Attendance
           </Button>
         )}
       </div>
 
-      {/* Controls */}
+      {/* Load controls */}
       <div className="card p-5">
-        <div className="flex flex-wrap gap-3 items-end">
+        <div className="grid sm:grid-cols-3 gap-3 items-end">
           <div>
             <label className="label">Class ID</label>
-            <input className="input w-56" placeholder="Paste Class ID…"
-                   value={classId} onChange={(e) => setClassId(e.target.value)} />
+            <input className="input font-mono text-xs" placeholder="Paste Class UUID…"
+              value={classId} onChange={(e) => setClassId(e.target.value)} />
           </div>
           <div>
-            <label className="label">Date</label>
-            <input className="input" type="date" value={date}
-                   onChange={(e) => setDate(e.target.value)} />
+            <label className="label flex items-center gap-1.5">
+              <CalendarDays className="w-3.5 h-3.5 text-slate-400" /> Date
+            </label>
+            <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <Button variant="primary" onClick={loadRoster} loading={loading}>Load Roster</Button>
+          <Button variant="primary" onClick={loadRoster} loading={loading}>Load Class</Button>
         </div>
       </div>
 
-      {/* Keyboard hint */}
+      {/* Stats + bulk actions */}
       {roster.length > 0 && (
-        <div className="flex items-center gap-4 px-4 py-3 bg-brand-50 rounded-xl text-sm text-brand-800 border border-brand-200 animate-fade-in">
-          <span className="font-semibold inline-flex items-center gap-1.5"><Keyboard className="w-4 h-4" /> Keyboard:</span>
-          {[['P', 'Present', 'emerald'], ['A', 'Absent', 'red'], ['T', 'Tardy', 'amber']].map(([k, l, c]) => (
-            <span key={k} className="flex items-center gap-1">
-              <kbd className={`px-2 py-0.5 rounded font-mono text-xs font-bold border bg-${c}-100 text-${c}-700 border-${c}-400`}>{k}</kbd>
-              <span className="text-slate-600">{l}</span>
-            </span>
-          ))}
-          <span className="text-slate-500 inline-flex items-center gap-1"><ArrowUpDown className="w-3.5 h-3.5" /> navigate</span>
-        </div>
-      )}
-
-      {/* Summary bar */}
-      {roster.length > 0 && (
-        <div className="flex gap-4 flex-wrap animate-fade-in">
-          {Object.entries(counts).map(([status, count]) => (
-            <div key={status}
-                 className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-semibold text-sm
-                             ${STATUS_CONFIG[status].bg}`}>
-              <span>{count}</span>
-              <span className="font-medium">{status.toLowerCase()}</span>
-              <span className="opacity-60 text-xs">({roster.length > 0 ? Math.round(count / roster.length * 100) : 0}%)</span>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100 text-sm">
+              <UserCheck className="w-4 h-4 text-emerald-600" />
+              <span className="font-semibold text-emerald-700">{presentCount} Present</span>
             </div>
-          ))}
-          <div className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-medium">
-            {roster.length} total
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 rounded-xl border border-red-100 text-sm">
+              <UserX className="w-4 h-4 text-red-500" />
+              <span className="font-semibold text-red-600">{absentCount} Absent</span>
+            </div>
+          </div>
+          <div className="flex gap-2 ml-auto">
+            <Button size="sm" variant="outline" onClick={() => markAll('PRESENT')}>
+              Mark All Present
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => markAll('ABSENT')}
+              className="text-red-600 border-red-200 hover:bg-red-50">
+              Mark All Absent
+            </Button>
           </div>
         </div>
       )}
@@ -139,60 +179,53 @@ export default function StaffAttendance() {
       {/* Roster */}
       {roster.length > 0 && (
         <div className="card overflow-hidden animate-fade-in-up">
-          <table className="table">
+          <table className="table w-full">
             <thead>
               <tr>
                 <th>#</th>
                 <th>Student</th>
-                <th>Present</th>
-                <th>Absent</th>
-                <th>Tardy</th>
+                <th className="text-center w-36">Present</th>
+                <th className="text-center w-36">Absent</th>
               </tr>
             </thead>
             <tbody>
-              {roster.map((item, idx) => {
-                const sid    = item.student.id;
-                const status = marks[sid] || 'PRESENT';
-                const isFocus = idx === focusIdx;
+              {roster.map((row, idx) => {
+                const sid    = row.student.id;
+                const status = marks[sid];
                 return (
-                  <tr key={sid}
-                      className={`transition-all duration-200 cursor-pointer
-                                  ${STATUS_CONFIG[status].row}
-                                  ${isFocus ? 'ring-2 ring-brand-400 ring-inset' : ''}`}
-                      onClick={() => setFocusIdx(idx)}
-                      style={{ animationDelay: `${idx * 30}ms` }}>
-                    <td className="text-slate-400 text-xs w-10">{idx + 1}</td>
+                  <tr key={sid} className={status === 'PRESENT' ? 'bg-emerald-50/40' : status === 'ABSENT' ? 'bg-red-50/40' : ''}>
+                    <td className="text-slate-400 text-sm w-10">{idx + 1}</td>
                     <td>
-                      <div className="font-semibold text-slate-800">{item.student.fullName}</div>
-                      <div className="text-xs text-slate-400">{item.student.admissionNumber}</div>
+                      <div className="font-semibold text-slate-800">{row.student.fullName}</div>
+                      <div className="text-xs text-slate-400">{row.student.admissionNumber}</div>
                     </td>
-                    {['PRESENT', 'ABSENT', 'TARDY'].map((s) => (
-                      <td key={s} className="text-center">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setMarks((m) => ({ ...m, [sid]: s })); }}
-                          className={`w-8 h-8 rounded-lg border-2 font-bold text-xs transition-all duration-150
-                                      active:scale-90
-                                      ${status === s
-                                        ? STATUS_CONFIG[s].bg + ' scale-110'
-                                        : 'border-slate-200 text-slate-300 hover:border-slate-400'}`}
-                        >
-                          {s[0]}
-                        </button>
-                      </td>
-                    ))}
+                    <td className="text-center">
+                      <button
+                        onClick={() => toggle(sid, 'PRESENT')}
+                        className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center mx-auto
+                          ${status === 'PRESENT'
+                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+                            : 'border-slate-200 text-slate-300 hover:border-emerald-300 hover:text-emerald-500'}`}
+                      >
+                        <UserCheck className="w-5 h-5" />
+                      </button>
+                    </td>
+                    <td className="text-center">
+                      <button
+                        onClick={() => toggle(sid, 'ABSENT')}
+                        className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center mx-auto
+                          ${status === 'ABSENT'
+                            ? 'bg-red-500 border-red-500 text-white shadow-sm'
+                            : 'border-slate-200 text-slate-300 hover:border-red-300 hover:text-red-500'}`}
+                      >
+                        <UserX className="w-5 h-5" />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {roster.length > 0 && (
-        <div className="flex justify-end">
-          <Button variant="accent" size="lg" loading={saving} onClick={handleSubmit}>
-            <Save className="w-4 h-4" /> Save All Attendance
-          </Button>
         </div>
       )}
     </div>

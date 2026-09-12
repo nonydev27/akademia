@@ -6,15 +6,13 @@ import { authApi } from '../api/auth';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null);   // { id, tenantId, role, fullName, email }
-  const [loading, setLoading] = useState(true);   // true while restoring session
+  const [user, setUser]       = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Prisma profile (tenant/role) is looked up by the API, keyed off the
-  // Supabase user id embedded in the access token.
   const loadProfile = useCallback(async () => {
     try {
       const res = await authApi.me();
-      setUser(res.data.user);
+      setUser(res.data.user); // includes tenantName
       return res.data.user;
     } catch {
       setUser(null);
@@ -22,7 +20,6 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // ── Restore session on mount + react to Supabase auth events ─────────
   useEffect(() => {
     let active = true;
 
@@ -46,7 +43,6 @@ export function AuthProvider({ children }) {
     };
   }, [loadProfile]);
 
-  // ── Login ─────────────────────────────────────────────
   const login = useCallback(async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
@@ -60,14 +56,16 @@ export function AuthProvider({ children }) {
     return profile;
   }, [loadProfile]);
 
-  // ── Logout ────────────────────────────────────────────
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
     setAccessToken(null);
     setUser(null);
   }, []);
 
-  const value = { user, loading, login, logout };
+  // Allow profile refresh after edit
+  const refreshProfile = useCallback(() => loadProfile(), [loadProfile]);
+
+  const value = { user, loading, login, logout, refreshProfile };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

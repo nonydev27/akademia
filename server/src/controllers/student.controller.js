@@ -1,5 +1,5 @@
 /**
- * controllers/student.controller.js — student CRUD, guardian linking, search.
+ * controllers/student.controller.js — student CRUD with extended profile.
  */
 
 import { z } from 'zod';
@@ -8,25 +8,23 @@ import { ApiError } from '../utils/ApiError.js';
 import { getStudentBalance } from '../services/fee.service.js';
 
 export const listQuerySchema = z.object({
-  search: z.string().optional(),
-  classId: z.string().optional(),
-  page: z.coerce.number().int().min(1).default(1),
+  search:   z.string().optional(),
+  classId:  z.string().optional(),
+  page:     z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export async function list(req, res) {
-  const { search, classId, page, pageSize } = req.query;
+  const { search, classId, page = 1, pageSize = 20 } = req.query;
 
   const where = {
     tenantId: req.tenantId,
-    ...(search
-      ? {
-          OR: [
-            { fullName: { contains: search, mode: 'insensitive' } },
-            { admissionNumber: { contains: search, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
+    ...(search ? {
+      OR: [
+        { fullName:        { contains: search, mode: 'insensitive' } },
+        { admissionNumber: { contains: search, mode: 'insensitive' } },
+      ],
+    } : {}),
     ...(classId ? { enrollments: { some: { classId } } } : {}),
   };
 
@@ -34,8 +32,8 @@ export async function list(req, res) {
     prisma.student.findMany({
       where,
       include: { enrollments: { include: { class: true } } },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      skip:    (Number(page) - 1) * Number(pageSize),
+      take:    Number(pageSize),
       orderBy: { fullName: 'asc' },
     }),
     prisma.student.count({ where }),
@@ -45,15 +43,33 @@ export async function list(req, res) {
 }
 
 export const createStudentSchema = z.object({
-  admissionNumber: z.string().min(1),
-  fullName: z.string().min(2),
-  dateOfBirth: z.coerce.date().optional(),
-  email: z.string().email().optional(),
-  classId: z.string().optional(),
+  admissionNumber:  z.string().min(1),
+  fullName:         z.string().min(2),
+  dateOfBirth:      z.coerce.date().optional(),
+  gender:           z.string().optional(),
+  nationality:      z.string().optional(),
+  religion:         z.string().optional(),
+  address:          z.string().optional(),
+  email:            z.string().email().optional().or(z.literal('')),
+  phone:            z.string().optional(),
+  // Academic
+  previousSchool:   z.string().optional(),
+  classId:          z.string().optional(),
+  // Co-curricular
+  sports:           z.string().optional(),
+  clubs:            z.string().optional(),
+  otherActivities:  z.string().optional(),
+  // Identification
+  nhisNumber:       z.string().optional(),
+  profilePicUrl:    z.string().url().optional().or(z.literal('')),
 });
 
 export async function create(req, res) {
-  const { admissionNumber, fullName, dateOfBirth, email, classId } = req.body;
+  const {
+    admissionNumber, fullName, dateOfBirth, gender, nationality, religion,
+    address, email, phone, previousSchool, classId,
+    sports, clubs, otherActivities, nhisNumber, profilePicUrl,
+  } = req.body;
 
   const existing = await prisma.student.findUnique({
     where: { tenantId_admissionNumber: { tenantId: req.tenantId, admissionNumber } },
@@ -65,8 +81,19 @@ export async function create(req, res) {
       tenantId: req.tenantId,
       admissionNumber,
       fullName,
-      dateOfBirth,
-      email,
+      dateOfBirth:     dateOfBirth || undefined,
+      gender:          gender || null,
+      nationality:     nationality || null,
+      religion:        religion || null,
+      address:         address || null,
+      email:           email || null,
+      phone:           phone || null,
+      previousSchool:  previousSchool || null,
+      sports:          sports || null,
+      clubs:           clubs || null,
+      otherActivities: otherActivities || null,
+      nhisNumber:      nhisNumber || null,
+      profilePicUrl:   profilePicUrl || null,
       ...(classId ? { enrollments: { create: { classId } } } : {}),
     },
   });
@@ -87,20 +114,30 @@ export async function getById(req, res) {
     where: { id: req.params.id },
     include: {
       enrollments: { include: { class: true } },
-      guardians: { include: { guardian: true } },
+      guardians:   { include: { guardian: true } },
     },
   });
 
   const { balance } = await getStudentBalance(student.id);
-
   res.json({ student: { ...student, feeBalance: balance } });
 }
 
 export const updateStudentSchema = z.object({
-  fullName: z.string().min(2).optional(),
-  dateOfBirth: z.coerce.date().optional(),
-  email: z.string().email().nullable().optional(),
-  active: z.boolean().optional(),
+  fullName:        z.string().min(2).optional(),
+  dateOfBirth:     z.coerce.date().optional(),
+  gender:          z.string().optional(),
+  nationality:     z.string().optional(),
+  religion:        z.string().optional(),
+  address:         z.string().optional(),
+  email:           z.string().email().nullable().optional(),
+  phone:           z.string().nullable().optional(),
+  previousSchool:  z.string().nullable().optional(),
+  sports:          z.string().nullable().optional(),
+  clubs:           z.string().nullable().optional(),
+  otherActivities: z.string().nullable().optional(),
+  nhisNumber:      z.string().nullable().optional(),
+  profilePicUrl:   z.string().url().nullable().optional().or(z.literal('')),
+  active:          z.boolean().optional(),
 });
 
 export async function update(req, res) {
@@ -117,8 +154,8 @@ export async function deactivate(req, res) {
 
 export const addGuardianSchema = z.object({
   fullName: z.string().min(2),
-  phone: z.string().min(6),
-  email: z.string().email().optional(),
+  phone:    z.string().min(6),
+  email:    z.string().email().optional(),
   relation: z.string().optional(),
 });
 

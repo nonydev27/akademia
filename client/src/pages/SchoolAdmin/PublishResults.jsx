@@ -1,289 +1,170 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { studentsApi }    from '../../api/students';
 import { reportcardsApi } from '../../api/reportcards';
-import { feesApi }        from '../../api/fees';
-import DataTable   from '../../components/ui/DataTable';
-import StatusBadge from '../../components/ui/StatusBadge';
-import Button      from '../../components/ui/Button';
-import Modal       from '../../components/ui/Modal';
-import { Zap, CheckCircle2, Ban, ClipboardList, PartyPopper, AlertTriangle, Check } from 'lucide-react';
+import Button from '../../components/ui/Button';
+import { ClipboardCheck, CheckCircle2, XCircle, Clock, Search } from 'lucide-react';
 
-const CONFETTI_COLORS = ['#f59e0b', '#3b82f6', '#a78bfa', '#22c55e', '#ef4444'];
+const STATUS_CONFIG = {
+  DRAFT:     { label: 'Draft',     color: 'bg-slate-100 text-slate-500' },
+  SUBMITTED: { label: 'Submitted', color: 'bg-amber-100 text-amber-700' },
+  APPROVED:  { label: 'Approved',  color: 'bg-brand-100 text-brand-700' },
+  RELEASED:  { label: 'Released',  color: 'bg-emerald-100 text-emerald-700' },
+  WITHHELD:  { label: 'Withheld',  color: 'bg-red-100 text-red-600' },
+};
 
 export default function PublishResults() {
-  const [termId, setTermId]         = useState('');
-  const [students, setStudents]     = useState([]);
-  const [feeMap, setFeeMap]         = useState({});
-  const [rcMap, setRcMap]           = useState({});
-  const [loading, setLoading]       = useState(false);
-  const [publishing, setPublishing] = useState({});
-  const [result, setResult]         = useState(null);
-  const [confirmBulk, setConfirmBulk] = useState(false);
-  const [confetti, setConfetti]     = useState([]);
-  const confettiRef = useRef(null);
+  const [termId,      setTermId]      = useState('');
+  const [status,      setStatus]      = useState('SUBMITTED');
+  const [cards,       setCards]       = useState([]);
+  const [loading,     setLoading]     = useState(false);
+  const [searched,    setSearched]    = useState(false);
+  const [approving,   setApproving]   = useState(null);
+  const [rejecting,   setRejecting]   = useState(null);
 
-  async function loadStudents() {
-    if (!termId.trim()) { toast.error('Enter a Term ID first'); return; }
+  async function loadCards() {
+    if (!termId.trim()) { toast.error('Enter a Term ID'); return; }
     setLoading(true);
+    setSearched(false);
     try {
-      const res = await studentsApi.list({ pageSize: 100 });
-      const list = res.data.students;
-      setStudents(list);
-
-      // Fetch fee balances in parallel (best-effort)
-      const feeResults = await Promise.allSettled(
-        list.map((s) => feesApi.getStudentAccount(s.id))
-      );
-      const fm = {};
-      feeResults.forEach((r, i) => {
-        if (r.status === 'fulfilled') fm[list[i].id] = r.value.data.balance;
-      });
-      setFeeMap(fm);
-
-      // Fetch report card statuses in parallel
-      const rcResults = await Promise.allSettled(
-        list.map((s) => reportcardsApi.get(s.id, termId))
-      );
-      const rm = {};
-      rcResults.forEach((r, i) => {
-        if (r.status === 'fulfilled') rm[list[i].id] = r.value.data.reportCard;
-      });
-      setRcMap(rm);
-    } catch { toast.error('Failed to load students'); }
-    finally { setLoading(false); }
-  }
-
-  async function publishOne(student) {
-    setPublishing((p) => ({ ...p, [student.id]: true }));
-    try {
-      const res = await reportcardsApi.publish(student.id, termId);
-      const { status, balance } = res.data;
-      setRcMap((prev) => ({ ...prev, [student.id]: res.data.reportCard }));
-
-      if (status === 'RELEASED') {
-        toast.success(`${student.fullName}'s report card RELEASED!`);
-        triggerConfetti();
-        setResult({ type: 'released', student, balance });
-      } else {
-        toast(`${student.fullName}'s report card WITHHELD — GHS ${balance?.toFixed(2)} outstanding`, {
-          icon: <AlertTriangle className="w-4 h-4 text-amber-500" />,
-        });
-        setResult({ type: 'withheld', student, balance });
-      }
+      const res = await reportcardsApi.list(termId.trim(), status || undefined);
+      setCards(res.data.reportCards);
+      setSearched(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Publish failed');
-    } finally {
-      setPublishing((p) => ({ ...p, [student.id]: false }));
-    }
+      toast.error(err.response?.data?.message || 'Failed to load report cards');
+    } finally { setLoading(false); }
   }
 
-  async function bulkPublish() {
-    setConfirmBulk(false);
-    const unpublished = students.filter((s) => !rcMap[s.id] || rcMap[s.id]?.status !== 'RELEASED');
-    for (const student of unpublished) {
-      await publishOne(student);
-      await new Promise((r) => setTimeout(r, 300)); // stagger requests
-    }
-    toast.success('Bulk publish complete!');
+  async function handleApprove(card) {
+    setApproving(card.student.id);
+    try {
+      const res = await reportcardsApi.approve(card.student.id, termId.trim());
+      toast.success(`${card.student.fullName}: ${res.data.status === 'RELEASED' ? 'Released' : 'Withheld (outstanding fees)'}`);
+      loadCards();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Approval failed');
+    } finally { setApproving(null); }
   }
 
-  function triggerConfetti() {
-    const pieces = Array.from({ length: 15 }).map((_, i) => ({
-      id: `${Date.now()}-${i}`,
-      size: Math.random() * 10 + 5,
-      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
-      round: Math.random() > 0.5,
-      left: `${40 + Math.random() * 20}%`,
-      top: `${40 + Math.random() * 20}%`,
-    }));
-    setConfetti(pieces);
-    setTimeout(() => setConfetti([]), 900);
+  async function handleReject(card) {
+    setRejecting(card.student.id);
+    try {
+      await reportcardsApi.reject(card.student.id, termId.trim());
+      toast.success(`Returned to teacher for revision`);
+      loadCards();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Rejection failed');
+    } finally { setRejecting(null); }
   }
-
-  const columns = [
-    { key: 'fullName', label: 'Student',
-      render: (v, row) => (
-        <div>
-          <div className="font-semibold">{v}</div>
-          <div className="text-xs text-slate-400">{row.admissionNumber}</div>
-        </div>
-      )},
-    { key: 'id', label: 'Fee Balance',
-      render: (id) => {
-        const b = feeMap[id];
-        if (b == null) return <span className="text-slate-300">—</span>;
-        return (
-          <span className={`font-bold text-sm inline-flex items-center gap-1 ${b > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-            {b > 0 ? `GHS ${b.toFixed(2)} owed` : <><CheckCircle2 className="w-3.5 h-3.5" /> Cleared</>}
-          </span>
-        );
-      }},
-    { key: 'id', label: 'Report Card',
-      render: (id) => {
-        const rc = rcMap[id];
-        if (!rc) return <span className="text-slate-300 text-xs">Not published</span>;
-        return <StatusBadge status={rc.status} />;
-      }},
-    { key: 'id', label: '',
-      render: (id, row) => {
-        const rc = rcMap[id];
-        const done = rc?.status === 'RELEASED';
-        return (
-          <Button
-            size="sm"
-            variant={done ? 'secondary' : 'primary'}
-            loading={!!publishing[id]}
-            disabled={done}
-            onClick={(e) => { e.stopPropagation(); publishOne(row); }}
-          >
-            {done ? <><Check className="w-3.5 h-3.5" /> Published</> : <><ClipboardList className="w-3.5 h-3.5" /> Publish</>}
-          </Button>
-        );
-      }},
-  ];
 
   return (
-    <div className="space-y-6 relative" ref={confettiRef}>
-      {/* Confetti overlay */}
-      {confetti.length > 0 && (
-        <div className="fixed inset-0 pointer-events-none z-[9999]">
-          {confetti.map((p) => (
-            <span
-              key={p.id}
-              className="confetti-burst absolute"
-              style={{
-                width: p.size, height: p.size, background: p.color,
-                borderRadius: p.round ? '50%' : '2px', left: p.left, top: p.top,
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Header */}
+    <div className="space-y-6">
       <div className="page-header">
         <div>
           <h1 className="page-title">Publish Results</h1>
-          <p className="page-subtitle">Release report cards after fee verification</p>
-        </div>
-        {students.length > 0 && (
-          <Button variant="accent" onClick={() => setConfirmBulk(true)}>
-            <ClipboardList className="w-4 h-4" /> Publish All
-          </Button>
-        )}
-      </div>
-
-      {/* How it works */}
-      <div className="card p-5 bg-gradient-to-r from-brand-50 to-indigo-50 border-brand-200 animate-fade-in">
-        <h3 className="font-bold text-brand-900 mb-3 flex items-center gap-2">
-          <Zap className="w-4 h-4" /> Result-Fee Intercept
-        </h3>
-        <div className="grid sm:grid-cols-2 gap-3 text-sm">
-          <div className="flex items-start gap-2 p-3 bg-white rounded-xl shadow-sm">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-            <div>
-              <div className="font-semibold text-slate-800">Balance = 0</div>
-              <div className="text-slate-500 text-xs">Report card released. Email + SMS sent to parent.</div>
-            </div>
-          </div>
-          <div className="flex items-start gap-2 p-3 bg-white rounded-xl shadow-sm">
-            <Ban className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <div>
-              <div className="font-semibold text-slate-800">Balance &gt; 0</div>
-              <div className="text-slate-500 text-xs">Report withheld. Payment demand sent to parent.</div>
-            </div>
-          </div>
+          <p className="page-subtitle">Review teacher submissions and approve or reject report cards</p>
         </div>
       </div>
 
-      {/* Term ID input */}
-      <div className="card p-5 animate-fade-in-up">
-        <div className="flex gap-3 items-end">
-          <div className="flex-1">
+      {/* Workflow explainer */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        {[
+          { icon: Clock, color: 'amber', title: '1. Teacher Submits', desc: 'After entering grades, the teacher submits for review.' },
+          { icon: ClipboardCheck, color: 'brand', title: '2. Admin Reviews', desc: 'You approve or return to the teacher for corrections.' },
+          { icon: CheckCircle2, color: 'emerald', title: '3. Released / Withheld', desc: 'Approved cards are released (or withheld if fees outstanding).' },
+        ].map(({ icon: Icon, color, title, desc }) => (
+          <div key={title} className={`p-4 rounded-2xl border bg-${color}-50 border-${color}-100`}>
+            <Icon className={`w-6 h-6 text-${color}-600 mb-2`} />
+            <div className={`font-semibold text-${color}-800 text-sm`}>{title}</div>
+            <p className={`text-xs text-${color}-700 mt-1`}>{desc}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="card p-5">
+        <div className="grid sm:grid-cols-3 gap-3 items-end">
+          <div>
             <label className="label">Term ID</label>
-            <input className="input" placeholder="Paste Term ID from database…"
-                   value={termId} onChange={(e) => setTermId(e.target.value)} />
+            <input className="input font-mono text-xs" placeholder="Paste Term UUID…"
+              value={termId} onChange={(e) => setTermId(e.target.value)} />
           </div>
-          <Button variant="primary" onClick={loadStudents} loading={loading}>Load Students</Button>
+          <div>
+            <label className="label">Status Filter</label>
+            <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="">All statuses</option>
+              <option value="DRAFT">Draft</option>
+              <option value="SUBMITTED">Submitted (pending review)</option>
+              <option value="APPROVED">Approved</option>
+              <option value="RELEASED">Released</option>
+              <option value="WITHHELD">Withheld</option>
+            </select>
+          </div>
+          <Button variant="primary" onClick={loadCards} loading={loading}>
+            <Search className="w-4 h-4" /> Load Results
+          </Button>
         </div>
       </div>
 
-      {/* Results Table */}
-      {students.length > 0 && (
-        <div className="card p-5 animate-fade-in-up">
-          <div className="flex justify-between mb-4">
-            <h2 className="font-bold text-slate-800">
-              {students.length} Students · Term {termId.slice(-8)}
-            </h2>
-            <div className="flex gap-3 text-xs text-slate-500">
-              <span className="inline-flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> {Object.values(rcMap).filter((r) => r?.status === 'RELEASED').length} released
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" /> {Object.values(rcMap).filter((r) => r?.status === 'WITHHELD').length} withheld
-              </span>
-            </div>
-          </div>
-          <DataTable
-            columns={columns}
-            data={students}
-            loading={loading}
-            emptyMessage="No students found"
-            total={students.length}
-            pageSize={50}
-          />
-        </div>
-      )}
-
-      {/* Result feedback modal */}
-      {result && (
-        <Modal
-          isOpen={!!result}
-          onClose={() => setResult(null)}
-          title={result.type === 'released'
-            ? <span className="inline-flex items-center gap-2"><PartyPopper className="w-5 h-5" /> Report Card Released!</span>
-            : <span className="inline-flex items-center gap-2"><AlertTriangle className="w-5 h-5" /> Report Card Withheld</span>}
-          size="sm"
-        >
-          {result.type === 'released' ? (
-            <div className="text-center space-y-4 py-2">
-              <PartyPopper className="w-16 h-16 mx-auto text-brand-600 animate-bounce-soft" />
-              <p className="font-semibold text-slate-800 text-lg">{result.student.fullName}</p>
-              <p className="text-sm text-slate-600">
-                Report card has been <strong className="text-emerald-600">released</strong>.
-                Email and SMS notifications have been sent to the parent/guardian.
-              </p>
-              <Button variant="primary" onClick={() => setResult(null)} className="w-full">Done</Button>
+      {/* Results table */}
+      {searched && (
+        <div className="card overflow-hidden animate-fade-in-up">
+          {cards.length === 0 ? (
+            <div className="flex flex-col items-center py-14 text-slate-400">
+              <ClipboardCheck className="w-12 h-12 mb-3 opacity-30" />
+              <p className="text-sm font-medium">No report cards match this filter</p>
             </div>
           ) : (
-            <div className="text-center space-y-4 py-2">
-              <AlertTriangle className="w-16 h-16 mx-auto text-red-500 animate-shake" />
-              <p className="font-semibold text-slate-800 text-lg">{result.student.fullName}</p>
-              <div className="p-4 bg-red-50 rounded-xl border border-red-200">
-                <p className="text-sm text-red-800">
-                  Report card <strong>withheld</strong> due to outstanding balance of{' '}
-                  <strong className="text-red-600">GHS {result.balance?.toFixed(2)}</strong>.
-                </p>
-                <p className="text-xs text-red-600 mt-1">A payment demand has been sent to the parent.</p>
-              </div>
-              <Button variant="secondary" onClick={() => setResult(null)} className="w-full">Close</Button>
-            </div>
+            <table className="table w-full">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cards.map((card, i) => {
+                  const cfg = STATUS_CONFIG[card.status] || STATUS_CONFIG.DRAFT;
+                  return (
+                    <tr key={card.id} style={{ animationDelay: `${i * 40}ms` }}>
+                      <td>
+                        <div className="font-semibold text-slate-800">{card.student.fullName}</div>
+                        <div className="text-xs text-slate-400">{card.student.admissionNumber}</div>
+                      </td>
+                      <td>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
+                          {cfg.label}
+                        </span>
+                      </td>
+                      <td className="text-sm text-slate-500">
+                        {card.submittedAt ? new Date(card.submittedAt).toLocaleDateString('en-GB') : '—'}
+                      </td>
+                      <td className="text-right">
+                        {card.status === 'SUBMITTED' && (
+                          <div className="flex gap-2 justify-end">
+                            <Button size="sm" variant="primary"
+                              loading={approving === card.student.id}
+                              onClick={() => handleApprove(card)}>
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                            </Button>
+                            <Button size="sm" variant="outline"
+                              loading={rejecting === card.student.id}
+                              onClick={() => handleReject(card)}
+                              className="text-red-600 border-red-200 hover:bg-red-50">
+                              <XCircle className="w-3.5 h-3.5" /> Return
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
-        </Modal>
-      )}
-
-      {/* Bulk confirm */}
-      <Modal isOpen={confirmBulk} onClose={() => setConfirmBulk(false)} title="Publish All Results" size="sm">
-        <p className="text-sm text-slate-700 mb-4">
-          This will publish results for all <strong>{students.length}</strong> students. 
-          Students with outstanding fees will be withheld automatically.
-        </p>
-        <div className="flex gap-3">
-          <Button variant="primary" onClick={bulkPublish} className="flex-1">Publish All</Button>
-          <Button variant="secondary" onClick={() => setConfirmBulk(false)}>Cancel</Button>
         </div>
-      </Modal>
+      )}
     </div>
   );
 }

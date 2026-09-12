@@ -1,4 +1,4 @@
-// Prisma schema — Akademia core data model (PRD section 10).
+// Prisma schema — Akademia core data model
 
 generator client {
   provider = "prisma-client-js"
@@ -31,10 +31,12 @@ enum SubscriptionStatus {
 enum AttendanceStatus {
   PRESENT
   ABSENT
-  TARDY
 }
 
 enum ReportCardStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
   WITHHELD
   RELEASED
 }
@@ -52,10 +54,12 @@ enum CommunicationStatus {
 // --- Tenancy ---
 
 model Tenant {
-  id          String      @id @default(uuid())
-  name        String
-  schoolLevel SchoolLevel
-  createdAt   DateTime    @default(now())
+  id           String      @id @default(uuid())
+  name         String
+  schoolLevel  SchoolLevel
+  adminPhone   String?
+  adminContact String?
+  createdAt    DateTime    @default(now())
 
   users          User[]
   students       Student[]
@@ -70,14 +74,16 @@ model Tenant {
 }
 
 model Subscription {
-  id             String             @id @default(uuid())
-  tenant         Tenant             @relation(fields: [tenantId], references: [id])
-  tenantId       String             @unique
-  status         SubscriptionStatus @default(ACTIVE)
-  expiresAt      DateTime
-  graceEndsAt    DateTime?
-  lastPaymentRef String?
-  updatedAt      DateTime           @updatedAt
+  id              String             @id @default(uuid())
+  tenant          Tenant             @relation(fields: [tenantId], references: [id])
+  tenantId        String             @unique
+  status          SubscriptionStatus @default(ACTIVE)
+  expiresAt       DateTime
+  graceEndsAt     DateTime?
+  lastPaymentRef  String?
+  lastPaymentAt   DateTime?
+  lastPaymentAmt  Float?
+  updatedAt       DateTime           @updatedAt
 }
 
 // --- Users / Auth ---
@@ -89,6 +95,7 @@ model User {
   role       Role
   fullName   String
   email      String   @unique
+  phone      String?
   supabaseId String   @unique
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -152,15 +159,29 @@ model Enrollment {
 // --- Students & guardians ---
 
 model Student {
-  id              String    @id @default(uuid())
-  tenant          Tenant    @relation(fields: [tenantId], references: [id])
-  tenantId        String
-  admissionNumber String
-  fullName        String
-  dateOfBirth     DateTime?
-  email           String?
-  admissionDate   DateTime  @default(now())
-  active          Boolean   @default(true)
+  id               String    @id @default(uuid())
+  tenant           Tenant    @relation(fields: [tenantId], references: [id])
+  tenantId         String
+  admissionNumber  String
+  fullName         String
+  dateOfBirth      DateTime?
+  gender           String?
+  nationality      String?
+  religion         String?
+  address          String?
+  email            String?
+  phone            String?
+  // Academic
+  previousSchool   String?
+  admissionDate    DateTime  @default(now())
+  // Co-curricular
+  sports           String?
+  clubs            String?
+  otherActivities  String?
+  // Identification
+  nhisNumber       String?
+  profilePicUrl    String?
+  active           Boolean   @default(true)
 
   guardians   StudentGuardian[]
   enrollments Enrollment[]
@@ -201,14 +222,16 @@ model StudentGuardian {
 // --- Attendance ---
 
 model Attendance {
-  id             String            @id @default(uuid())
-  student        Student           @relation(fields: [studentId], references: [id])
+  id             String          @id @default(uuid())
+  student        Student         @relation(fields: [studentId], references: [id])
   studentId      String
+  subject        Subject?        @relation(fields: [subjectId], references: [id])
+  subjectId      String?
   date           DateTime
   status         AttendanceStatus
   markedByUserId String?
 
-  @@unique([studentId, date])
+  @@unique([studentId, subjectId, date])
 }
 
 // --- Subjects & grading ---
@@ -218,16 +241,18 @@ model Subject {
   tenant   Tenant @relation(fields: [tenantId], references: [id])
   tenantId String
   name     String
+  code     String   // e.g. ENGLP2
+  pin      String?  // hashed 4-digit pin set by teacher
 
   grades               Grade[]
   teacherAssignments   TeacherClassSubject[]
+  attendance           Attendance[]
 
+  @@unique([tenantId, code])
   @@index([tenantId])
 }
 
 /// Assigns a teacher (STAFF user) to a specific class + subject.
-/// Only the assigned teacher (or any SCHOOL_ADMIN) may enter grades
-/// for that class/subject combination.
 model TeacherClassSubject {
   id        String   @id @default(uuid())
   teacher   User     @relation(fields: [teacherId], references: [id])
@@ -244,11 +269,6 @@ model TeacherClassSubject {
   @@index([subjectId])
 }
 
-/// Multi-score grade record.
-/// caScore       = Continuous Assessment (class tests, quizzes, homework)
-/// midtermScore  = Mid-term / mid-semester examination
-/// examScore     = End-of-term / end-of-semester examination
-/// aggregate     = Weighted total (formula in grade.service.js)
 model Grade {
   id            String    @id @default(uuid())
   student       Student   @relation(fields: [studentId], references: [id])
@@ -257,14 +277,14 @@ model Grade {
   subjectId     String
   term          Term      @relation(fields: [termId], references: [id])
   termId        String
-  caScore       Float?    // Continuous Assessment
-  midtermScore  Float?    // Mid-term / mid-semester exam
-  examScore     Float?    // End-of-term / end-of-semester exam
-  aggregate     Float?    // Computed weighted total
-  remarks       String?   // Optional teacher remarks
+  caScore       Float?
+  midtermScore  Float?
+  examScore     Float?
+  aggregate     Float?
+  remarks       String?
   finalized     Boolean   @default(false)
   finalizedAt   DateTime?
-  enteredById   String?   // userId of who last saved
+  enteredById   String?
 
   @@unique([studentId, subjectId, termId])
   @@index([studentId])
@@ -317,7 +337,10 @@ model ReportCard {
   studentId   String
   term        Term             @relation(fields: [termId], references: [id])
   termId      String
-  status      ReportCardStatus @default(WITHHELD)
+  status      ReportCardStatus @default(DRAFT)
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  approvedBy  String?
   pdfUrl      String?
   publishedAt DateTime?
 

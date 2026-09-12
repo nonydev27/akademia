@@ -1,81 +1,129 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { attendanceApi } from '../../api/attendance';
-import StatusBadge from '../../components/ui/StatusBadge';
+import Button from '../../components/ui/Button';
+import { BarChart3, UserCheck, UserX, CalendarDays, Search } from 'lucide-react';
 
 export default function AdminAttendance() {
-  const [classId, setClassId] = useState('');
-  const [date, setDate]       = useState(new Date().toISOString().split('T')[0]);
-  const [roster, setRoster]   = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [classId,  setClassId]  = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate,   setToDate]   = useState('');
+  const [summary,  setSummary]  = useState([]);
+  const [loading,  setLoading]  = useState(false);
+  const [searched, setSearched] = useState(false);
 
-  async function loadRoster() {
+  async function loadSummary() {
     if (!classId.trim()) { toast.error('Enter a Class ID'); return; }
     setLoading(true);
+    setSearched(false);
     try {
-      const res = await attendanceApi.forClass(classId, date);
-      setRoster(res.data.roster);
-    } catch { toast.error('Failed to load roster'); }
-    finally { setLoading(false); }
+      const res = await attendanceApi.summary(classId.trim(), {
+        fromDate: fromDate || undefined,
+        toDate:   toDate   || undefined,
+      });
+      setSummary(res.data.summary);
+      setSearched(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load attendance summary');
+    } finally { setLoading(false); }
   }
-
-  const counts = { PRESENT: 0, ABSENT: 0, TARDY: 0 };
-  roster.forEach((r) => { if (r.status && counts[r.status] != null) counts[r.status]++; });
 
   return (
     <div className="space-y-6">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Attendance</h1>
-          <p className="page-subtitle">View class attendance records</p>
+          <h1 className="page-title">Attendance Summary</h1>
+          <p className="page-subtitle">Overview of attendance per student. Teachers mark daily attendance.</p>
         </div>
       </div>
 
-      <div className="card p-5 animate-fade-in-up">
-        <div className="flex flex-wrap gap-3 items-end">
+      {/* Info */}
+      <div className="flex gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+        <BarChart3 className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-amber-800">
+          As admin you can view attendance summaries. Only teachers can mark student attendance for their assigned subjects.
+        </p>
+      </div>
+
+      {/* Filter */}
+      <div className="card p-5">
+        <div className="grid sm:grid-cols-4 gap-3 items-end">
           <div>
             <label className="label">Class ID</label>
-            <input className="input w-56" placeholder="Paste Class ID…"
-                   value={classId} onChange={(e) => setClassId(e.target.value)} />
+            <input className="input font-mono text-xs" placeholder="Paste Class UUID…"
+              value={classId} onChange={(e) => setClassId(e.target.value)} />
           </div>
           <div>
-            <label className="label">Date</label>
-            <input className="input" type="date" value={date}
-                   onChange={(e) => setDate(e.target.value)} />
+            <label className="label flex items-center gap-1.5">
+              <CalendarDays className="w-3.5 h-3.5 text-slate-400" /> From Date
+            </label>
+            <input type="date" className="input" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
-          <button className="btn-primary btn" onClick={loadRoster}>Load Roster</button>
+          <div>
+            <label className="label">To Date</label>
+            <input type="date" className="input" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          </div>
+          <Button variant="primary" onClick={loadSummary} loading={loading}>
+            <Search className="w-4 h-4" /> Load Summary
+          </Button>
         </div>
       </div>
 
-      {roster.length > 0 && (
-        <div className="card p-5 animate-fade-in-up">
-          {/* Summary bar */}
-          <div className="flex gap-4 mb-4 flex-wrap">
-            {[
-              { s: 'PRESENT', count: counts.PRESENT, bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-              { s: 'ABSENT',  count: counts.ABSENT,  bg: 'bg-red-50 text-red-700 border-red-200' },
-              { s: 'TARDY',   count: counts.TARDY,   bg: 'bg-amber-50 text-amber-700 border-amber-200' },
-            ].map((b) => (
-              <div key={b.s} className={`px-4 py-2 rounded-xl border text-sm font-semibold ${b.bg}`}>
-                {b.count} {b.s.toLowerCase()}
-              </div>
-            ))}
-          </div>
-
-          <div className="table-container">
-            <table className="table">
-              <thead><tr><th>Student</th><th>Adm. No.</th><th>Status</th></tr></thead>
+      {/* Summary table */}
+      {searched && (
+        <div className="card overflow-hidden animate-fade-in-up">
+          {summary.length === 0 ? (
+            <div className="flex flex-col items-center py-14 text-slate-400">
+              <BarChart3 className="w-12 h-12 mb-3 opacity-30" />
+              <p className="text-sm font-medium">No attendance records found for this class</p>
+            </div>
+          ) : (
+            <table className="table w-full">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th className="text-center">Total Sessions</th>
+                  <th className="text-center">Present</th>
+                  <th className="text-center">Absent</th>
+                  <th className="text-center">Attendance %</th>
+                </tr>
+              </thead>
               <tbody>
-                {roster.map((r, i) => (
-                  <tr key={r.student.id} style={{ animationDelay: `${i * 30}ms` }}>
-                    <td className="font-medium">{r.student.fullName}</td>
-                    <td className="text-slate-400">{r.student.admissionNumber}</td>
-                    <td>{r.status ? <StatusBadge status={r.status} /> : <span className="text-slate-300">—</span>}</td>
+                {summary.map((s, i) => (
+                  <tr key={s.student.id} style={{ animationDelay: `${i * 30}ms` }}>
+                    <td>
+                      <div className="font-semibold text-slate-800">{s.student.fullName}</div>
+                      <div className="text-xs text-slate-400">{s.student.admissionNumber}</div>
+                    </td>
+                    <td className="text-center font-semibold text-slate-700">{s.total}</td>
+                    <td className="text-center">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
+                        <UserCheck className="w-3 h-3" /> {s.present}
+                      </span>
+                    </td>
+                    <td className="text-center">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-semibold">
+                        <UserX className="w-3 h-3" /> {s.absent}
+                      </span>
+                    </td>
+                    <td className="text-center">
+                      <div className="flex items-center gap-2 justify-center">
+                        <div className="w-20 bg-slate-100 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all ${s.percentage >= 75 ? 'bg-emerald-500' : s.percentage >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                            style={{ width: `${s.percentage}%` }}
+                          />
+                        </div>
+                        <span className={`text-xs font-bold ${s.percentage >= 75 ? 'text-emerald-700' : s.percentage >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {s.percentage}%
+                        </span>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          )}
         </div>
       )}
     </div>

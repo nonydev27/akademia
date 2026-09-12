@@ -51,18 +51,22 @@ export async function renewSelfServe(req, res) {
   res.json({ checkoutUrl, reference });
 }
 
-async function activateSubscription(tenantId, reference) {
+async function activateSubscription(tenantId, reference, amount) {
   const currentSubscription = await prisma.subscription.findUnique({ where: { tenantId } });
   const base =
-    currentSubscription && currentSubscription.expiresAt > new Date() ? currentSubscription.expiresAt.getTime() : Date.now();
+    currentSubscription && currentSubscription.expiresAt > new Date()
+      ? currentSubscription.expiresAt.getTime()
+      : Date.now();
 
   return prisma.subscription.update({
     where: { tenantId },
     data: {
-      status: 'ACTIVE',
-      expiresAt: new Date(base + ONE_YEAR_MS),
-      graceEndsAt: null,
+      status:        'ACTIVE',
+      expiresAt:     new Date(base + ONE_YEAR_MS),
+      graceEndsAt:   null,
       lastPaymentRef: reference,
+      lastPaymentAt: new Date(),
+      lastPaymentAmt: amount ?? RENEWAL_AMOUNT_GHS,
     },
   });
 }
@@ -76,7 +80,7 @@ export async function verifyByReference(req, res) {
   const result = await verifyPayment(reference);
   if (!result.success) throw ApiError.badRequest('Payment could not be verified');
 
-  const subscription = await activateSubscription(req.tenantId, reference);
+  const subscription = await activateSubscription(req.tenantId, reference, result.amount);
   res.json({ message: 'Subscription renewed', subscription });
 }
 
@@ -89,8 +93,9 @@ export async function webhook(req, res) {
     const event = JSON.parse(req.body.toString('utf8'));
     if (event.event === 'charge.success') {
       const reference = event.data.reference;
-      const tenantId = reference.split('_')[1];
-      await activateSubscription(tenantId, reference);
+      const amount    = (event.data.amount || 0) / 100;
+      const tenantId  = reference.split('_')[1];
+      await activateSubscription(tenantId, reference, amount);
     }
   }
 

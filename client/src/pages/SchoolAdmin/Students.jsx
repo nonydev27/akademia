@@ -6,7 +6,26 @@ import Modal       from '../../components/ui/Modal';
 import Button      from '../../components/ui/Button';
 import Input       from '../../components/ui/Input';
 import StatusBadge from '../../components/ui/StatusBadge';
-import { Plus, Search, X, Users, PartyPopper, CheckCircle2 } from 'lucide-react';
+import {
+  Plus, Search, X, Users, UserCircle,
+  GraduationCap, Trophy, IdCard, Eye, ChevronRight, ChevronLeft, Pencil,
+} from 'lucide-react';
+
+const STEPS = [
+  { id: 'personal',      label: 'Personal',       icon: UserCircle },
+  { id: 'academic',      label: 'Academic',        icon: GraduationCap },
+  { id: 'cocurricular',  label: 'Co-Curricular',   icon: Trophy },
+  { id: 'identification',label: 'Identification',  icon: IdCard },
+  { id: 'preview',       label: 'Preview',         icon: Eye },
+];
+
+const EMPTY_FORM = {
+  admissionNumber: '', fullName: '', dateOfBirth: '', gender: '',
+  nationality: '', religion: '', address: '', email: '', phone: '',
+  previousSchool: '', classId: '',
+  sports: '', clubs: '', otherActivities: '',
+  nhisNumber: '', profilePicUrl: '',
+};
 
 export default function Students() {
   const [students, setStudents] = useState([]);
@@ -15,14 +34,16 @@ export default function Students() {
   const [search, setSearch]     = useState('');
   const [loading, setLoading]   = useState(true);
 
-  const [showAdd, setShowAdd]   = useState(false);
-  const [saving, setSaving]     = useState(false);
-  const [form, setForm]         = useState({ admissionNumber: '', fullName: '', dateOfBirth: '', email: '' });
+  const [showAdd,  setShowAdd]  = useState(false);
+  const [step,     setStep]     = useState(0);
+  const [form,     setForm]     = useState(EMPTY_FORM);
+  const [saving,   setSaving]   = useState(false);
 
-  const [selected, setSelected] = useState(null);  // student for detail panel
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [guardianForm, setGuardianForm]   = useState({ fullName: '', phone: '', email: '', relation: '' });
-  const [addingGuardian, setAddingGuardian] = useState(false);
+  const [selected,       setSelected]       = useState(null);
+  const [detailLoading,  setDetailLoading]  = useState(false);
+  const [editingField,   setEditingField]   = useState(null);
+  const [editValue,      setEditValue]      = useState('');
+  const [savingEdit,     setSavingEdit]     = useState(false);
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
@@ -35,12 +56,10 @@ export default function Students() {
   }, [search, page]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
-
-  // Debounce search
   useEffect(() => {
-    const t = setTimeout(() => { setPage(1); fetchStudents(); }, 400);
+    const t = setTimeout(() => { setPage(1); }, 400);
     return () => clearTimeout(t);
-  }, [search]); // eslint-disable-line
+  }, [search]);
 
   async function openDetail(row) {
     setDetailLoading(true);
@@ -52,49 +71,49 @@ export default function Students() {
     finally { setDetailLoading(false); }
   }
 
-  async function handleAdd(e) {
-    e.preventDefault();
+  function openAdd() {
+    setForm(EMPTY_FORM);
+    setStep(0);
+    setShowAdd(true);
+  }
+
+  function setField(key, val) {
+    setForm((f) => ({ ...f, [key]: val }));
+  }
+
+  async function handleSave() {
     setSaving(true);
     try {
-      await studentsApi.create({ ...form, dateOfBirth: form.dateOfBirth || undefined });
-      toast.success('Student added!', { icon: <PartyPopper className="w-4 h-4" /> });
+      await studentsApi.create({
+        ...form,
+        dateOfBirth: form.dateOfBirth || undefined,
+        email:       form.email || undefined,
+        classId:     form.classId || undefined,
+      });
+      toast.success('Student added successfully');
       setShowAdd(false);
-      setForm({ admissionNumber: '', fullName: '', dateOfBirth: '', email: '' });
       fetchStudents();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to add student');
     } finally { setSaving(false); }
   }
 
-  async function handleDeactivate(id, name) {
-    if (!window.confirm(`Deactivate ${name}? This cannot be undone from the UI.`)) return;
+  async function saveField(studentId) {
+    if (!editingField) return;
+    setSavingEdit(true);
     try {
-      await studentsApi.deactivate(id);
-      toast.success('Student deactivated');
-      fetchStudents();
-      if (selected?.id === id) setSelected(null);
+      await studentsApi.update(studentId, { [editingField]: editValue || null });
+      toast.success('Updated');
+      setEditingField(null);
+      openDetail({ id: studentId });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to deactivate');
-    }
-  }
-
-  async function handleAddGuardian(e) {
-    e.preventDefault();
-    if (!selected) return;
-    setAddingGuardian(true);
-    try {
-      await studentsApi.addGuardian(selected.id, guardianForm);
-      toast.success('Guardian added', { icon: <CheckCircle2 className="w-4 h-4" /> });
-      setGuardianForm({ fullName: '', phone: '', email: '', relation: '' });
-      openDetail(selected);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add guardian');
-    } finally { setAddingGuardian(false); }
+      toast.error(err.response?.data?.message || 'Update failed');
+    } finally { setSavingEdit(false); }
   }
 
   const columns = [
     { key: 'admissionNumber', label: 'Adm. No.' },
-    { key: 'fullName',        label: 'Name',
+    { key: 'fullName', label: 'Name',
       render: (v, row) => (
         <div>
           <div className="font-semibold text-slate-800">{v}</div>
@@ -103,180 +122,319 @@ export default function Students() {
       )},
     { key: 'enrollments', label: 'Class',
       render: (v) => v?.[0]?.class?.name || <span className="text-slate-300">—</span> },
-    { key: 'feeBalance', label: 'Fee Balance',
-      render: (v) => (
-        <span className={`font-semibold ${v > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-          {v != null ? `GHS ${Number(v).toFixed(2)}` : '—'}
-        </span>
-      ) },
+    { key: 'gender', label: 'Gender',
+      render: (v) => v || <span className="text-slate-300">—</span> },
     { key: 'active', label: 'Status',
       render: (v) => <StatusBadge status={v ? 'ACTIVE' : 'EXPIRED_LOCKED'} label={v ? 'Active' : 'Inactive'} /> },
     { key: 'id', label: '',
       render: (id, row) => (
-        <div className="flex gap-1">
-          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openDetail(row); }}>
-            View
-          </Button>
-          <Button size="sm" variant="danger" onClick={(e) => { e.stopPropagation(); handleDeactivate(id, row.fullName); }}>
-            <X className="w-3.5 h-3.5" />
-          </Button>
-        </div>
+        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openDetail(row); }}>
+          View
+        </Button>
       )},
   ];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Students</h1>
           <p className="page-subtitle">{total} student{total !== 1 ? 's' : ''} enrolled</p>
         </div>
-        <Button variant="primary" onClick={() => setShowAdd(true)}><Plus className="w-4 h-4" /> Add Student</Button>
+        <Button variant="primary" onClick={openAdd}><Plus className="w-4 h-4" /> Add Student</Button>
       </div>
 
-      {/* Search */}
       <div className="card p-4">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input className="input pl-9"
-                 placeholder="Search by name or admission number…"
-                 value={search}
-                 onChange={(e) => setSearch(e.target.value)} />
+          <input className="input pl-9" placeholder="Search by name or admission number…"
+            value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
 
-      {/* Table */}
       <div className="card p-5 animate-fade-in-up">
-        <DataTable
-          columns={columns}
-          data={students}
-          loading={loading}
-          total={total}
-          page={page}
-          pageSize={20}
-          onPageChange={setPage}
-          emptyMessage="No students found"
-          emptyIcon={<Users className="w-12 h-12" />}
-          onRowClick={openDetail}
-        />
+        <DataTable columns={columns} data={students} loading={loading} total={total}
+          page={page} pageSize={20} onPageChange={setPage}
+          emptyMessage="No students found" emptyIcon={<Users className="w-12 h-12" />}
+          onRowClick={openDetail} />
       </div>
 
-      {/* Add Student Modal */}
-      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Add Student">
-        <form onSubmit={handleAdd} className="space-y-4">
-          <Input label="Admission Number" value={form.admissionNumber}
-            onChange={(e) => setForm({ ...form, admissionNumber: e.target.value })} required />
-          <Input label="Full Name" value={form.fullName}
-            onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
-          <Input label="Date of Birth (optional)" type="date" value={form.dateOfBirth}
-            onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} />
-          <Input label="Student Email (optional)" type="email" value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <div className="flex gap-3 pt-2">
-            <Button type="submit" variant="primary" loading={saving} className="flex-1">Add Student</Button>
-            <Button type="button" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+      {/* Multi-step Add Student Modal */}
+      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Add New Student" size="lg">
+        {/* Step indicator */}
+        <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
+          {STEPS.map((s, idx) => {
+            const Icon = s.icon;
+            const isActive   = idx === step;
+            const isComplete = idx < step;
+            return (
+              <div key={s.id} className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => idx < step && setStep(idx)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all
+                    ${isActive   ? 'bg-brand-600 text-white shadow-sm' : ''}
+                    ${isComplete ? 'bg-brand-100 text-brand-700 cursor-pointer' : ''}
+                    ${!isActive && !isComplete ? 'bg-slate-100 text-slate-400 cursor-default' : ''}`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{s.label}</span>
+                </button>
+                {idx < STEPS.length - 1 && <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Step 0: Personal */}
+        {step === 0 && (
+          <div className="space-y-4">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Input label="Admission Number *" value={form.admissionNumber}
+                onChange={(e) => setField('admissionNumber', e.target.value)} required />
+              <Input label="Full Name *" value={form.fullName}
+                onChange={(e) => setField('fullName', e.target.value)} required />
+              <Input label="Date of Birth" type="date" value={form.dateOfBirth}
+                onChange={(e) => setField('dateOfBirth', e.target.value)} />
+              <div>
+                <label className="label">Gender</label>
+                <select className="input" value={form.gender} onChange={(e) => setField('gender', e.target.value)}>
+                  <option value="">Select…</option>
+                  <option>Male</option><option>Female</option><option>Other</option>
+                </select>
+              </div>
+              <Input label="Nationality" value={form.nationality}
+                onChange={(e) => setField('nationality', e.target.value)} />
+              <Input label="Religion" value={form.religion}
+                onChange={(e) => setField('religion', e.target.value)} />
+              <Input label="Phone Number" type="tel" value={form.phone}
+                onChange={(e) => setField('phone', e.target.value)} />
+              <Input label="Email Address" type="email" value={form.email}
+                onChange={(e) => setField('email', e.target.value)} />
+            </div>
+            <Input label="Home Address" value={form.address}
+              onChange={(e) => setField('address', e.target.value)} />
           </div>
-        </form>
+        )}
+
+        {/* Step 1: Academic */}
+        {step === 1 && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              If this student was at another school before, enter it below. Otherwise leave it blank.
+            </p>
+            <Input label="Name of Previous School" value={form.previousSchool}
+              placeholder="Leave blank if not applicable"
+              onChange={(e) => setField('previousSchool', e.target.value)} />
+            <Input label="Class ID (optional)" value={form.classId}
+              placeholder="UUID of the class to enroll in"
+              onChange={(e) => setField('classId', e.target.value)} />
+          </div>
+        )}
+
+        {/* Step 2: Co-curricular */}
+        {step === 2 && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">Record the student's extracurricular activities.</p>
+            <div>
+              <label className="label">Sports</label>
+              <textarea className="input min-h-[80px] resize-none" placeholder="e.g. Football, Athletics…"
+                value={form.sports} onChange={(e) => setField('sports', e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Clubs &amp; Societies</label>
+              <textarea className="input min-h-[80px] resize-none" placeholder="e.g. Science Club, Debate…"
+                value={form.clubs} onChange={(e) => setField('clubs', e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Other Activities</label>
+              <textarea className="input min-h-[80px] resize-none" placeholder="Any other activities or interests…"
+                value={form.otherActivities} onChange={(e) => setField('otherActivities', e.target.value)} />
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Identification */}
+        {step === 3 && (
+          <div className="space-y-4">
+            <Input label="NHIS Number" value={form.nhisNumber}
+              placeholder="National Health Insurance Scheme number"
+              onChange={(e) => setField('nhisNumber', e.target.value)} />
+            <Input label="Profile Picture URL" value={form.profilePicUrl}
+              placeholder="https://…  (upload to Supabase Storage first)"
+              onChange={(e) => setField('profilePicUrl', e.target.value)} />
+          </div>
+        )}
+
+        {/* Step 4: Preview */}
+        {step === 4 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              {form.profilePicUrl ? (
+                <img src={form.profilePicUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-brand-200" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-500 to-brand-700
+                                flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                  {form.fullName?.[0] || '?'}
+                </div>
+              )}
+              <div>
+                <div className="text-xl font-bold text-slate-900">{form.fullName || '—'}</div>
+                <div className="text-sm text-slate-500">{form.admissionNumber}</div>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+              {[
+                ['Date of Birth', form.dateOfBirth], ['Gender', form.gender],
+                ['Nationality', form.nationality], ['Religion', form.religion],
+                ['Phone', form.phone], ['Email', form.email],
+                ['Address', form.address], ['Previous School', form.previousSchool],
+                ['Sports', form.sports], ['Clubs', form.clubs],
+                ['Other Activities', form.otherActivities], ['NHIS No.', form.nhisNumber],
+              ].map(([label, val]) => val ? (
+                <div key={label} className="flex gap-2">
+                  <span className="text-slate-400 flex-shrink-0">{label}:</span>
+                  <span className="text-slate-700 font-medium">{val}</span>
+                </div>
+              ) : null)}
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="flex justify-between mt-6 pt-4 border-t border-slate-100">
+          <Button variant="secondary" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
+            <ChevronLeft className="w-4 h-4" /> Back
+          </Button>
+          {step < STEPS.length - 1 ? (
+            <Button variant="primary"
+              disabled={step === 0 && (!form.admissionNumber || !form.fullName)}
+              onClick={() => setStep((s) => s + 1)}>
+              Next <ChevronRight className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button variant="primary" loading={saving} onClick={handleSave}>
+              Save Student
+            </Button>
+          )}
+        </div>
       </Modal>
 
       {/* Student Detail Side Panel */}
       {selected && (
-        <div className="fixed inset-0 z-40 flex" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-40 flex" onClick={() => { setSelected(null); setEditingField(null); }}>
           <div className="flex-1 bg-black/50 animate-fade-in" />
-          <div className="w-full max-w-md bg-white h-full overflow-y-auto shadow-2xl animate-slide-in-right"
+          <div className="w-full max-w-lg bg-white h-full overflow-y-auto shadow-2xl animate-slide-in-right"
                onClick={(e) => e.stopPropagation()}>
             <div className="p-6 space-y-5">
-              {/* Close */}
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-slate-900">Student Profile</h2>
-                <Button variant="ghost" onClick={() => setSelected(null)}><X className="w-4 h-4" /></Button>
+                <Button variant="ghost" onClick={() => { setSelected(null); setEditingField(null); }}>
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
 
               {detailLoading ? (
                 <div className="space-y-3 animate-pulse">
-                  {[1,2,3,4].map(i => <div key={i} className="skeleton h-10 rounded-xl" />)}
+                  {[1,2,3,4,5].map(i => <div key={i} className="skeleton h-10 rounded-xl" />)}
                 </div>
               ) : (
                 <>
-                  {/* Bio */}
-                  <div className="card p-4">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-600 to-brand-800
-                                      flex items-center justify-center text-white font-bold text-lg">
+                  {/* Avatar */}
+                  <div className="flex items-center gap-4">
+                    {selected.profilePicUrl ? (
+                      <img src={selected.profilePicUrl} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-brand-200" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-600 to-brand-800
+                                      flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
                         {selected.fullName?.[0]}
                       </div>
-                      <div>
-                        <div className="font-bold text-slate-900">{selected.fullName}</div>
-                        <div className="text-xs text-slate-500">{selected.admissionNumber}</div>
-                      </div>
+                    )}
+                    <div>
+                      <div className="font-bold text-slate-900 text-lg">{selected.fullName}</div>
+                      <div className="text-xs text-slate-500">{selected.admissionNumber}</div>
+                      <div className="text-xs text-slate-400">{selected.enrollments?.[0]?.class?.name || 'No class'}</div>
                     </div>
-                    <dl className="space-y-2 text-sm">
-                      {selected.email && (
-                        <div className="flex justify-between">
-                          <dt className="text-slate-500">Email</dt>
-                          <dd className="text-slate-700">{selected.email}</dd>
-                        </div>
-                      )}
-                      {selected.dateOfBirth && (
-                        <div className="flex justify-between">
-                          <dt className="text-slate-500">Date of Birth</dt>
-                          <dd className="text-slate-700">{new Date(selected.dateOfBirth).toLocaleDateString()}</dd>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <dt className="text-slate-500">Class</dt>
-                        <dd className="text-slate-700">{selected.enrollments?.[0]?.class?.name || '—'}</dd>
-                      </div>
-                      {selected.feeBalance != null && (
-                        <div className="flex justify-between">
-                          <dt className="text-slate-500">Fee Balance</dt>
-                          <dd className={`font-bold ${selected.feeBalance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                            GHS {Number(selected.feeBalance).toFixed(2)}
-                          </dd>
-                        </div>
-                      )}
-                    </dl>
                   </div>
 
-                  {/* Guardians */}
-                  <div>
-                    <h3 className="font-semibold text-slate-700 mb-2">Guardians</h3>
-                    {selected.guardians?.length ? (
-                      <div className="space-y-2">
-                        {selected.guardians.map((sg) => (
-                          <div key={sg.id} className="px-4 py-3 rounded-xl bg-slate-50 text-sm">
-                            <div className="font-semibold">{sg.guardian?.fullName}</div>
-                            <div className="text-slate-500">{sg.guardian?.phone} · {sg.relation || 'Guardian'}</div>
-                            {sg.guardian?.email && <div className="text-slate-400 text-xs">{sg.guardian.email}</div>}
+                  {/* Editable fields */}
+                  {[
+                    { section: 'Personal', fields: [
+                      { key: 'fullName', label: 'Full Name' },
+                      { key: 'dateOfBirth', label: 'Date of Birth', type: 'date' },
+                      { key: 'gender', label: 'Gender' },
+                      { key: 'nationality', label: 'Nationality' },
+                      { key: 'religion', label: 'Religion' },
+                      { key: 'phone', label: 'Phone' },
+                      { key: 'email', label: 'Email' },
+                      { key: 'address', label: 'Address' },
+                    ]},
+                    { section: 'Academic', fields: [
+                      { key: 'previousSchool', label: 'Previous School' },
+                    ]},
+                    { section: 'Co-Curricular', fields: [
+                      { key: 'sports', label: 'Sports' },
+                      { key: 'clubs', label: 'Clubs' },
+                      { key: 'otherActivities', label: 'Other Activities' },
+                    ]},
+                    { section: 'Identification', fields: [
+                      { key: 'nhisNumber', label: 'NHIS Number' },
+                    ]},
+                  ].map(({ section, fields }) => (
+                    <div key={section}>
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{section}</h3>
+                      <div className="card p-3 space-y-1">
+                        {fields.map(({ key, label, type }) => (
+                          <div key={key} className="flex items-center gap-2 py-1">
+                            <span className="text-xs text-slate-500 w-28 flex-shrink-0">{label}</span>
+                            {editingField === key ? (
+                              <div className="flex items-center gap-1 flex-1">
+                                <input type={type || 'text'}
+                                  className="input text-xs py-1 flex-1"
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  autoFocus
+                                />
+                                <Button size="sm" variant="primary" loading={savingEdit}
+                                  onClick={() => saveField(selected.id)}>Save</Button>
+                                <Button size="sm" variant="ghost"
+                                  onClick={() => setEditingField(null)}>
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 flex-1">
+                                <span className="text-sm text-slate-700 flex-1 truncate">
+                                  {selected[key]
+                                    ? (key === 'dateOfBirth' ? new Date(selected[key]).toLocaleDateString() : selected[key])
+                                    : <span className="text-slate-300 italic">—</span>}
+                                </span>
+                                <button
+                                  onClick={() => { setEditingField(key); setEditValue(selected[key] || ''); }}
+                                  className="text-slate-400 hover:text-brand-600 p-0.5 rounded opacity-0 group-hover:opacity-100 transition"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <p className="text-slate-400 text-sm">No guardians linked.</p>
-                    )}
+                    </div>
+                  ))}
 
-                    {/* Add Guardian Form */}
-                    <details className="mt-3">
-                      <summary className="cursor-pointer text-sm font-medium text-brand-700 hover:text-brand-900">
-                        + Add Guardian
-                      </summary>
-                      <form onSubmit={handleAddGuardian} className="space-y-3 mt-3">
-                        <Input label="Full Name" value={guardianForm.fullName}
-                          onChange={(e) => setGuardianForm({ ...guardianForm, fullName: e.target.value })} required />
-                        <Input label="Phone Number" value={guardianForm.phone}
-                          onChange={(e) => setGuardianForm({ ...guardianForm, phone: e.target.value })} required />
-                        <Input label="Email (optional)" type="email" value={guardianForm.email}
-                          onChange={(e) => setGuardianForm({ ...guardianForm, email: e.target.value })} />
-                        <Input label="Relationship" value={guardianForm.relation}
-                          placeholder="e.g. Mother, Father"
-                          onChange={(e) => setGuardianForm({ ...guardianForm, relation: e.target.value })} />
-                        <Button type="submit" variant="primary" size="sm" loading={addingGuardian}>
-                          Add Guardian
-                        </Button>
-                      </form>
-                    </details>
-                  </div>
+                  {/* Fee balance */}
+                  {selected.feeBalance != null && (
+                    <div className="card p-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Fee Balance</span>
+                        <span className={`font-bold ${selected.feeBalance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                          GHS {Number(selected.feeBalance).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>

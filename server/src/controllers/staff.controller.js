@@ -22,16 +22,15 @@ export const createTeacherSchema = z.object({
   fullName: z.string().min(2),
   email:    z.string().email(),
   password: z.string().min(8),
+  phone:    z.string().optional(),
 });
 
 export async function createTeacher(req, res) {
-  const { fullName, email, password } = req.body;
+  const { fullName, email, password, phone } = req.body;
 
-  // Check Prisma first — avoids creating a dangling Supabase user
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) throw ApiError.badRequest('A user with that email already exists');
 
-  // Create Supabase auth user with email pre-confirmed so they can log in immediately
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
@@ -40,7 +39,6 @@ export async function createTeacher(req, res) {
   });
 
   if (authError) {
-    // Surface the Supabase error message clearly (e.g. "User already registered")
     throw ApiError.badRequest(`Could not create login account: ${authError.message}`);
   }
 
@@ -54,12 +52,12 @@ export async function createTeacher(req, res) {
         role:       'STAFF',
         fullName,
         email,
+        phone:      phone || null,
         supabaseId: supabaseUserId,
         active:     true,
       },
     });
   } catch (err) {
-    // Roll back the Supabase auth user so we don't leave orphaned records
     await supabaseAdmin.auth.admin.deleteUser(supabaseUserId).catch(() => {});
     throw err;
   }
@@ -78,6 +76,7 @@ export async function createTeacher(req, res) {
       id:        teacher.id,
       fullName:  teacher.fullName,
       email:     teacher.email,
+      phone:     teacher.phone,
       active:    teacher.active,
       createdAt: teacher.createdAt,
     },
