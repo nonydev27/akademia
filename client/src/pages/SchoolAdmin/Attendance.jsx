@@ -1,16 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { attendanceApi } from '../../api/attendance';
+import { classesApi }    from '../../api/classes';
 import Button from '../../components/ui/Button';
 import { BarChart3, UserCheck, UserX, CalendarDays, Search } from 'lucide-react';
 
 export default function AdminAttendance() {
+  const [classes,  setClasses]  = useState([]);
   const [classId,  setClassId]  = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate,   setToDate]   = useState('');
   const [summary,  setSummary]  = useState([]);
   const [loading,  setLoading]  = useState(false);
   const [searched, setSearched] = useState(false);
+
+  // Load classes so the admin picks one by name/code rather than pasting a UUID.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await classesApi.list();
+        setClasses(res.data.classes || []);
+      } catch { /* non-fatal */ }
+    })();
+  }, []);
 
   async function loadSummary() {
     if (!classId.trim()) { toast.error('Enter a Class ID'); return; }
@@ -49,9 +61,13 @@ export default function AdminAttendance() {
       <div className="card p-5">
         <div className="grid sm:grid-cols-4 gap-3 items-end">
           <div>
-            <label className="label">Class ID</label>
-            <input className="input font-mono text-xs" placeholder="Paste Class UUID…"
-              value={classId} onChange={(e) => setClassId(e.target.value)} />
+            <label className="label">Class</label>
+            <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
+              <option value="">Select a class…</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="label flex items-center gap-1.5">

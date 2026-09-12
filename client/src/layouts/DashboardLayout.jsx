@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, CheckSquare, Wallet,
   NotebookPen, ClipboardCheck, Send, KeyRound, LogOut, ChevronLeft,
   ChevronRight, Menu, AlertTriangle, ArrowRight, HelpCircle, Users2,
-  BookOpen, UserCircle, Building2,
+  BookOpen, UserCircle, Building2, Layers,
 } from 'lucide-react';
 
 const ICON_SIZE = 'w-[18px] h-[18px]';
@@ -24,6 +24,7 @@ const NAV_SCHOOL_ADMIN = [
   { to: '/admin/students',       icon: <Users className={ICON_SIZE} />,           label: 'Students' },
   { to: '/admin/staff',          icon: <Users2 className={ICON_SIZE} />,          label: 'Staff' },
   { to: '/admin/subjects',       icon: <BookOpen className={ICON_SIZE} />,        label: 'Subjects' },
+  { to: '/admin/classes',        icon: <Layers className={ICON_SIZE} />,          label: 'Classes' },
   { to: '/admin/attendance',     icon: <CheckSquare className={ICON_SIZE} />,     label: 'Attendance' },
   { to: '/admin/fees',           icon: <Wallet className={ICON_SIZE} />,          label: 'Fees' },
   { to: '/admin/grades',         icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grades' },
@@ -37,6 +38,7 @@ const NAV_STAFF = [
   { to: '/staff',               icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
   { to: '/staff/attendance',    icon: <CheckSquare className={ICON_SIZE} />,     label: 'Mark Attendance' },
   { to: '/staff/grades',        icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grade Entry' },
+  { to: '/staff/subjects',      icon: <BookOpen className={ICON_SIZE} />,        label: 'My Subjects' },
   { to: '/staff/profile',       icon: <UserCircle className={ICON_SIZE} />,      label: 'My Profile' },
 ];
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { feesApi }    from '../../api/fees';
 import { studentsApi } from '../../api/students';
+import { termsApi }    from '../../api/terms';
 import DataTable   from '../../components/ui/DataTable';
 import Button      from '../../components/ui/Button';
 import Input       from '../../components/ui/Input';
@@ -183,7 +184,18 @@ function RecordPaymentTab({ onDone }) {
 
 function FeeStructuresTab() {
   const [form, setForm] = useState({ termId: '', amount: '', label: '' });
-  const [saving, setSaving] = useState(false);
+  const [terms, setTerms]     = useState([]);
+  const [saving, setSaving]   = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await termsApi.list();
+        setTerms(res.data.terms || []);
+        if (res.data.terms?.length && !form.termId) setForm((f) => ({ ...f, termId: res.data.terms[0].id }));
+      } catch { /* non-fatal */ }
+    })();
+  }, []); // eslint-disable-line
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -205,8 +217,16 @@ function FeeStructuresTab() {
                value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} required />
         <Input label="Amount (GHS)" type="number" min="0.01" step="0.01"
                value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-        <Input label="Term ID" placeholder="Paste Term ID from database"
-               value={form.termId} onChange={(e) => setForm({ ...form, termId: e.target.value })} required />
+        <div>
+          <label className="label">Term</label>
+          <select className="input" value={form.termId}
+                  onChange={(e) => setForm({ ...form, termId: e.target.value })} required>
+            <option value="">Select a term…</option>
+            {terms.map((t) => (
+              <option key={t.id} value={t.id}>{t.label}</option>
+            ))}
+          </select>
+        </div>
         <Button type="submit" variant="primary" loading={saving} className="w-full">
           Create Fee Structure
         </Button>

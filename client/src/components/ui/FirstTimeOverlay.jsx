@@ -1,81 +1,85 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import {
+  Hand, LayoutDashboard, Users2, NotebookPen, ClipboardCheck, HelpCircle,
+  CheckSquare, Calculator, Lock, School, KeyRound,
+} from 'lucide-react';
 
 const TOUR_KEY = 'akademia_tour_done_v1';
 
 const STEPS = {
   SCHOOL_ADMIN: [
     {
-      icon: '👋',
+      Icon: Hand,
       title: 'Welcome to Akademia!',
       body: "You're logged in as School Admin. This quick tour shows you where everything is. Click Next to continue, or Skip to jump straight in.",
     },
     {
-      icon: '📊',
+      Icon: LayoutDashboard,
       title: 'Your Dashboard',
       body: 'The dashboard gives you a live overview of your school — students, outstanding fees, and subscription status. Quick-action buttons let you jump to the most common tasks instantly.',
     },
     {
-      icon: '👩‍🏫',
+      Icon: Users2,
       title: 'Add Teachers First',
       body: "Before teachers can enter grades, you need to add them under Staff Management and assign them to a Class + Subject. That's what controls who can edit which grade sheet.",
     },
     {
-      icon: '📝',
+      Icon: NotebookPen,
       title: 'The Grade Sheet',
       body: 'The online grade sheet works like a spreadsheet. Load a class, subject, and term to see all enrolled students. Enter CA, Midterm, and Exam scores — the aggregate calculates live. Save All submits everything at once.',
     },
     {
-      icon: '📋',
+      Icon: ClipboardCheck,
       title: 'Publishing Results',
       body: "When you're ready to release results, go to Publish Results. The system checks each student's fee balance automatically. Zero balance = report released + notification sent. Outstanding balance = report withheld + payment demand sent.",
     },
     {
-      icon: '❓',
+      Icon: HelpCircle,
       title: 'Need Help Anytime?',
-      body: 'Click the ? Help button in the top bar at any time to open the full user guide. You can also hover over any input or icon to see a tooltip explaining what it does.',
+      body: 'Click the Help button in the top bar at any time to open the full user guide. You can also hover over any input or icon to see a tooltip explaining what it does.',
     },
   ],
   STAFF: [
     {
-      icon: '👋',
+      Icon: Hand,
       title: 'Welcome, Teacher!',
       body: "You're logged in as a staff member. You can mark attendance and enter grades for your assigned classes. Let's get you oriented.",
     },
     {
-      icon: '✅',
+      Icon: CheckSquare,
       title: 'Marking Attendance',
-      body: 'Go to Mark Attendance, pick your class and date, then click Load Roster. Use keyboard shortcuts P (Present), A (Absent), T (Tardy) to mark quickly — the cursor moves down automatically.',
+      body: 'Go to Mark Attendance, pick your class and date, then click Load Roster. Use keyboard shortcuts P (Present) and A (Absent) to mark quickly — the cursor moves down automatically.',
     },
     {
-      icon: '📝',
+      Icon: NotebookPen,
       title: 'Entering Grades',
       body: "Go to Grade Entry, select your class, subject, and term. You'll only see classes and subjects your admin has assigned to you. Fill in CA, Midterm, and Exam scores for each student, then Save All.",
     },
     {
-      icon: '🧮',
+      Icon: Calculator,
       title: 'Grade Formula',
       body: 'Your aggregate is calculated as: CA (30%) + Midterm (20%) + End-of-Term Exam (50%). All out of 100. The letter grade and remark show live as you type.',
     },
     {
-      icon: '🔒',
+      Icon: Lock,
       title: 'Finalizing Grades',
       body: 'Once all scores are correct, click Finalize to lock the sheet. Finalized grades cannot be edited — not even by the admin. Only finalize when you are fully satisfied with every score.',
     },
   ],
   SUPER_ADMIN: [
     {
-      icon: '👋',
+      Icon: Hand,
       title: 'Welcome, Super Admin!',
       body: 'You manage the entire Akademia platform. From here you can create school accounts, manage subscriptions, and monitor all tenants.',
     },
     {
-      icon: '🏫',
+      Icon: School,
       title: 'Adding Schools',
       body: "Click Add School on the dashboard. You'll set the school's name, level, and create the first admin account. The school gets a 1-year active subscription automatically.",
     },
     {
-      icon: '🔑',
+      Icon: KeyRound,
       title: 'Subscription Control',
       body: "Click any school to manage its subscription. You can activate, put in grace period, or lock a school. Locking preserves all data but prevents login until renewed.",
     },
@@ -112,6 +116,7 @@ export default function FirstTimeOverlay() {
   if (!visible || !steps.length) return null;
 
   const current = steps[step];
+  const CurrentIcon = current.Icon;
   const progress = ((step + 1) / steps.length) * 100;
 
   return (
@@ -133,10 +138,11 @@ export default function FirstTimeOverlay() {
         {/* Content */}
         <div className="p-8 text-center">
           <div
-            className="text-6xl mb-5 animate-bounce-soft inline-block"
+            className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-brand-50
+                       flex items-center justify-center animate-bounce-soft"
             key={step}
           >
-            {current.icon}
+            <CurrentIcon className="w-8 h-8 text-brand-600" />
           </div>
 
           <h2 className="text-2xl font-extrabold text-slate-900 mb-3 animate-fade-in-up">
@@ -175,7 +181,7 @@ export default function FirstTimeOverlay() {
             onClick={next}
             className="btn-primary btn px-6"
           >
-            {step < steps.length - 1 ? 'Next →' : 'Get Started 🚀'}
+            {step < steps.length - 1 ? 'Next' : 'Get Started'}
           </button>
         </div>
       </div>

@@ -28,6 +28,72 @@ export async function listSubjects(req, res) {
   res.json({ subjects: subjects.map((s) => ({ ...s, pinSet: !!s.pin, pin: undefined })) });
 }
 
+// Teacher: list subjects assigned to me (with pin status).
+// Powers the teacher portal so a subject teacher can see their own subjects and
+// set/reset the access PIN for each without ever seeing another teacher's data.
+export async function listMySubjects(req, res) {
+  if (req.user.role === 'SCHOOL_ADMIN') {
+    // Admins oversee everything — return all subjects with pin status.
+    const subjects = await prisma.subject.findMany({
+      where:   { tenantId: req.tenantId },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, code: true, pin: true },
+    });
+    return res.json({
+      subjects: subjects.map((s) => ({ id: s.id, name: s.name, code: s.code, pinSet: !!s.pin, classes: [] })),
+    });
+  }
+
+  const assignments = await prisma.teacherClassSubject.findMany({
+    where: { teacherId: req.user.id, subject: { tenantId: req.tenantId } },
+    include: {
+      subject: { select: { id: true, name: true, code: true, pin: true } },
+      class:   { select: { id: true, name: true } },
+    },
+    orderBy: { subject: { name: 'asc' } },
+  });
+
+  // Group assignments by subject so each subject appears once with its classes.
+  const bySubject = new Map();
+  for (const a of assignments) {
+    const key = a.subject.id;
+    if (!bySubject.has(key)) {
+      bySubject.set(key, {
+        id: a.subject.id, name: a.subject.name, code: a.subject.code,
+        pinSet: !!a.subject.pin, classes: [],
+      });
+    }
+    bySubject.get(key).classes.push({ id: a.class.id, name: a.class.name });
+  }
+
+  res.json({ subjects: [...bySubject.values()] });
+}
+
+// Teacher: set / reset my subject PIN (self-service). A teacher may set or
+// reset the PIN for any subject they are assigned to. This is the
+// "reset PIN if forgotten" path from the portal.
+export const resetMyPinSchema = z.object({
+  pin: z.string().length(4).regex(/^\d{4}$/, 'PIN must be exactly 4 digits'),
+});
+
+export async function resetMyPin(req, res) {
+  const { id } = req.params;
+  const { pin } = req.body;
+
+  const subject = await prisma.subject.findFirst({ where: { id, tenantId: req.tenantId } });
+  if (!subject) throw ApiError.notFound('Subject not found');
+
+  if (req.user.role !== 'SCHOOL_ADMIN') {
+    const assignment = await prisma.teacherClassSubject.findFirst({
+      where: { subjectId: id, teacherId: req.user.id },
+    });
+    if (!assignment) throw ApiError.forbidden('You are not assigned to this subject');
+  }
+
+  await prisma.subject.update({ where: { id }, data: { pin: hashPin(pin), pinOwnerId: req.user.id } });
+  res.json({ message: 'PIN updated successfully' });
+}
+
 // ─── Admin: create subject ───────────────────────────────────────────────────
 export const createSubjectSchema = z.object({
   name: z.string().min(2),
@@ -86,19 +152,19 @@ export async function setPin(req, res) {
   const { id } = req.params;
   const { pin } = req.body;
 
-  // Verify teacher is assigned to this subject
-  const assignment = await prisma.teacherClassSubject.findFirst({
-    where: { subjectId: id, teacherId: req.user.id },
-  });
-  if (!assignment && req.user.role !== 'SCHOOL_ADMIN') {
-    throw ApiError.forbidden('You are not assigned to this subject');
+  // Admin can set any PIN; a teacher may only set the PIN for a subject they teach.
+  if (req.user.role !== 'SCHOOL_ADMIN') {
+    const assignment = await prisma.teacherClassSubject.findFirst({
+      where: { subjectId: id, teacherId: req.user.id },
+    });
+    if (!assignment) throw ApiError.forbidden('You are not assigned to this subject');
   }
 
   // Verify subject belongs to same tenant
   const subject = await prisma.subject.findFirst({ where: { id, tenantId: req.tenantId } });
   if (!subject) throw ApiError.notFound('Subject not found');
 
-  await prisma.subject.update({ where: { id }, data: { pin: hashPin(pin) } });
+  await prisma.subject.update({ where: { id }, data: { pin: hashPin(pin), pinOwnerId: req.user.id } });
   res.json({ message: 'PIN updated successfully' });
 }
 

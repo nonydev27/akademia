@@ -5,12 +5,17 @@
 import prisma from '../config/db.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { ApiError } from '../utils/ApiError.js';
+import { uniqueSchoolCode } from './code.service.js';
 
 export async function createTenantWithAdmin({
   schoolName, schoolLevel, adminFullName, adminEmail, adminPassword, adminPhone, adminContact,
+  schoolCode,
 }) {
   const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
   if (existing) throw ApiError.badRequest('A user with that email already exists');
+
+  // Human-facing school code (initials). Unique across the platform.
+  const code = await uniqueSchoolCode(schoolCode, schoolName);
 
   const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
 
@@ -24,7 +29,7 @@ export async function createTenantWithAdmin({
   try {
     return await prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
-        data: { name: schoolName, schoolLevel, adminPhone, adminContact },
+        data: { name: schoolName, code, schoolLevel, adminPhone, adminContact },
       });
       const admin = await tx.user.create({
         data: {

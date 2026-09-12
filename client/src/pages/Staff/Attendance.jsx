@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { attendanceApi } from '../../api/attendance';
 import { subjectsApi }   from '../../api/subjects';
+import { staffApi }      from '../../api/staff';
 import Button from '../../components/ui/Button';
 import { KeyRound, CheckCircle2, UserCheck, UserX, Save, CalendarDays } from 'lucide-react';
 
@@ -13,12 +15,26 @@ export default function StaffAttendance() {
   const [verified,    setVerified]    = useState(null);
 
   // Roster state
+  const [myAssignments, setMyAssignments] = useState([]); // teacher's own assignments
   const [classId,  setClassId]  = useState('');
   const [date,     setDate]     = useState(new Date().toISOString().slice(0, 10));
   const [roster,   setRoster]   = useState([]);   // [{ student, status }]
   const [marks,    setMarks]    = useState({});    // { studentId: 'PRESENT'|'ABSENT' }
   const [loading,  setLoading]  = useState(false);
   const [saving,   setSaving]   = useState(false);
+
+  // Load only the teacher's own classes so they pick from a list (no UUIDs).
+  const loadMyAssignments = useCallback(async () => {
+    try {
+      const res = await staffApi.mine();
+      setMyAssignments(res.data.assignments || []);
+    } catch { /* non-fatal */ }
+  }, []);
+  useEffect(() => { loadMyAssignments(); }, [loadMyAssignments]);
+
+  const myClasses = Array.from(
+    new Map(myAssignments.map((a) => [a.class.id, a.class])).values()
+  );
 
   async function handleVerify(e) {
     e.preventDefault();
@@ -103,10 +119,16 @@ export default function StaffAttendance() {
                 placeholder="••••"
                 value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} required />
             </div>
-            <Button type="submit" variant="primary" loading={verifying} className="w-full">
-              <CheckCircle2 className="w-4 h-4" /> Verify &amp; Continue
-            </Button>
-          </form>
+              <Button type="submit" variant="primary" loading={verifying} className="w-full">
+                <CheckCircle2 className="w-4 h-4" /> Verify &amp; Continue
+              </Button>
+            </form>
+            <p className="text-xs text-slate-400 mt-4">
+              Forgot your PIN?{' '}
+              <Link to="/staff/subjects" className="text-brand-600 hover:text-brand-800 font-semibold underline">
+                Reset it in My Subjects
+              </Link>
+            </p>
         </div>
       </div>
     );
@@ -137,9 +159,13 @@ export default function StaffAttendance() {
       <div className="card p-5">
         <div className="grid sm:grid-cols-3 gap-3 items-end">
           <div>
-            <label className="label">Class ID</label>
-            <input className="input font-mono text-xs" placeholder="Paste Class UUID…"
-              value={classId} onChange={(e) => setClassId(e.target.value)} />
+            <label className="label">Class</label>
+            <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
+              <option value="">Select your class…</option>
+              {myClasses.map((c) => (
+                <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="label flex items-center gap-1.5">

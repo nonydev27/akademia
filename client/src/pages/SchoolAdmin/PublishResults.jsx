@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { reportcardsApi } from '../../api/reportcards';
+import { termsApi }      from '../../api/terms';
 import Button from '../../components/ui/Button';
 import { ClipboardCheck, CheckCircle2, XCircle, Clock, Search } from 'lucide-react';
 
@@ -13,6 +14,7 @@ const STATUS_CONFIG = {
 };
 
 export default function PublishResults() {
+  const [terms,       setTerms]       = useState([]);
   const [termId,      setTermId]      = useState('');
   const [status,      setStatus]      = useState('SUBMITTED');
   const [cards,       setCards]       = useState([]);
@@ -21,6 +23,16 @@ export default function PublishResults() {
   const [approving,   setApproving]   = useState(null);
   const [rejecting,   setRejecting]   = useState(null);
 
+  // Labelled terms for the dropdown (replaces pasting a Term UUID).
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await termsApi.list();
+        setTerms(res.data.terms || []);
+        if (res.data.terms?.length && !termId) setTermId(res.data.terms[0].id);
+      } catch { /* non-fatal */ }
+    })();
+  }, []); // eslint-disable-line
   async function loadCards() {
     if (!termId.trim()) { toast.error('Enter a Term ID'); return; }
     setLoading(true);
@@ -84,9 +96,13 @@ export default function PublishResults() {
       <div className="card p-5">
         <div className="grid sm:grid-cols-3 gap-3 items-end">
           <div>
-            <label className="label">Term ID</label>
-            <input className="input font-mono text-xs" placeholder="Paste Term UUID…"
-              value={termId} onChange={(e) => setTermId(e.target.value)} />
+            <label className="label">Term</label>
+            <select className="input" value={termId} onChange={(e) => setTermId(e.target.value)}>
+              <option value="">Select a term…</option>
+              {terms.map((t) => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="label">Status Filter</label>

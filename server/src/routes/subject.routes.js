@@ -20,13 +20,17 @@ router.use(requireAuth, attachTenant, requireActiveSubscription);
 router.get('/',    requireRole('SCHOOL_ADMIN'), controller.listSubjects);
 router.post('/',   requireRole('SCHOOL_ADMIN'), validate({ body: controller.createSubjectSchema }), controller.createSubject);
 
+// Teacher portal: my assigned subjects (teacher or admin) — must be before /:id
+router.get('/mine', controller.listMySubjects);
+
 // Verify by code (teacher portal) — must be before /:id
 router.post('/verify-by-code', validate({ body: controller.verifyByCodeSchema }), controller.verifyByCode);
 
 // Parameterized routes
 router.put('/:id',    requireRole('SCHOOL_ADMIN'), validate({ body: controller.updateSubjectSchema }), controller.updateSubject);
 router.delete('/:id', requireRole('SCHOOL_ADMIN'), controller.deleteSubject);
-router.post('/:id/pin',        validate({ body: controller.setPinSchema }),    controller.setPin);
-router.post('/:id/verify-pin', validate({ body: controller.verifyPinSchema }), controller.verifyPin);
+router.post('/:id/pin',        validate({ body: controller.setPinSchema }),      controller.setPin);
+router.post('/:id/reset-pin',  validate({ body: controller.resetMyPinSchema }),  controller.resetMyPin);
+router.post('/:id/verify-pin', validate({ body: controller.verifyPinSchema }),   controller.verifyPin);
 
 export default router;

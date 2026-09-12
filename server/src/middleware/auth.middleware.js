@@ -19,7 +19,13 @@ export async function requireAuth(req, res, next) {
   if (error || !data?.user) throw ApiError.unauthorized();
 
   const profile = await prisma.user.findUnique({ where: { supabaseId: data.user.id } });
-  if (!profile) throw ApiError.unauthorized();
+  if (!profile) {
+    // The Supabase login is valid but this account has no Akademia profile.
+    // Return an actionable message instead of a bare 401.
+    throw ApiError.unauthorized(
+      'This account has no Akademia profile. Ask your administrator to register you, or contact support.'
+    );
+  }
 
   req.user = {
     id: profile.id,
