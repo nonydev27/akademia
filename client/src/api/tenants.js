@@ -6,4 +6,5 @@ export const tenantsApi = {
   create:             (data)       => api.post('/tenants', data),
   update:             (id, data)   => api.patch(`/tenants/${id}`, data),
   updateSubscription: (id, data)   => api.patch(`/tenants/${id}/subscription`, data),
+  createAdmin:        (id, data)   => api.post(`/tenants/${id}/admin`, data),
 };

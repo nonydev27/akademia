@@ -51,3 +51,29 @@ export async function createTenantWithAdmin({
     throw err;
   }
 }
+
+export async function provisionTenantAdmin(tenantId, { fullName, email, password, phone }) {
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) throw ApiError.badRequest('A user with that email already exists');
+
+  const { data: authUser, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { fullName, role: 'SCHOOL_ADMIN', tenantId },
+  });
+  if (error) throw ApiError.badRequest(`Could not create account: ${error.message}`);
+
+  const user = await prisma.user.create({
+    data: {
+      tenantId,
+      role: 'SCHOOL_ADMIN',
+      fullName,
+      email,
+      phone: phone || null,
+      supabaseId: authUser.user.id,
+    },
+  });
+
+  return user;
+}

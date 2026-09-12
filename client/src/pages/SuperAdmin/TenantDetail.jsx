@@ -5,7 +5,9 @@ import { tenantsApi } from '../../api/tenants';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Button      from '../../components/ui/Button';
 import DataTable   from '../../components/ui/DataTable';
-import { ArrowLeft, School, KeyRound, Users, UserRound } from 'lucide-react';
+import Modal       from '../../components/ui/Modal';
+import Input       from '../../components/ui/Input';
+import { ArrowLeft, School, KeyRound, Users, UserRound, UserPlus } from 'lucide-react';
 
 export default function TenantDetail() {
   const { id }    = useParams();
@@ -14,6 +16,9 @@ export default function TenantDetail() {
   const [loading, setLoading]     = useState(true);
   const [subForm, setSubForm]     = useState({});
   const [saving, setSaving]       = useState(false);
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [adminForm, setAdminForm] = useState({ fullName: '', email: '', password: '', phone: '' });
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
 
   useEffect(() => { fetchTenant(); }, [id]);
 
@@ -44,6 +49,22 @@ export default function TenantDetail() {
       toast.error(err.response?.data?.message || 'Update failed');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleAddAdmin(e) {
+    e.preventDefault();
+    setCreatingAdmin(true);
+    try {
+      await tenantsApi.createAdmin(id, adminForm);
+      toast.success('Admin added successfully');
+      setShowAddAdmin(false);
+      setAdminForm({ fullName: '', email: '', password: '', phone: '' });
+      fetchTenant();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to add admin');
+    } finally {
+      setCreatingAdmin(false);
     }
   }
 
@@ -147,8 +168,13 @@ export default function TenantDetail() {
       </div>
 
       {/* Users */}
-      <div className="card p-6 animate-fade-in-up" style={{ animationDelay: '160ms' }}>
-        <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Users className="w-4 h-4" /> Users</h2>
+      <div className="card p-6 animate-fade-in-up" style={{ animationDelay: 160 }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-slate-800 flex items-center gap-2"><Users className="w-4 h-4" /> Users</h2>
+          <Button size="sm" variant="primary" onClick={() => setShowAddAdmin(true)}>
+            <UserPlus className="w-3.5 h-3.5" /> Add Admin
+          </Button>
+        </div>
         <DataTable
           columns={userColumns}
           data={tenant.users || []}
@@ -158,6 +184,49 @@ export default function TenantDetail() {
           pageSize={20}
         />
       </div>
+
+      {/* Add Admin Modal */}
+      <AdminForm
+        isOpen={showAddAdmin}
+        onClose={() => setShowAddAdmin(false)}
+        form={adminForm}
+        setForm={setAdminForm}
+        saving={creatingAdmin}
+        onSubmit={handleAddAdmin}
+      />
     </div>
+  );
+}
+
+function AdminForm({ isOpen, onClose, form, setForm, saving, onSubmit }) {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Add New Admin" size="sm">
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div>
+          <label className="label">Full Name *</label>
+          <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+            placeholder="e.g. Grace Asante" required />
+        </div>
+        <div>
+          <label className="label">Email *</label>
+          <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+            placeholder="e.g. teacher@school.edu.gh" required />
+        </div>
+        <div>
+          <label className="label">Password *</label>
+          <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
+            placeholder="Min 8 characters" required />
+        </div>
+        <div>
+          <label className="label">Phone Number</label>
+          <Input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder="e.g. 0244123456" />
+        </div>
+        <div className="flex gap-3 pt-2">
+          <Button type="submit" variant="primary" loading={saving} className="flex-1">Add Admin</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

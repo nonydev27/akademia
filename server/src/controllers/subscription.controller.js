@@ -15,6 +15,7 @@ import { z } from 'zod';
 import prisma from '../config/db.js';
 import { ApiError } from '../utils/ApiError.js';
 import { env } from '../config/env.js';
+import { invalidateCached } from '../middleware/subscription.middleware.js';
 import { initializeRenewalPayment, verifyPayment, verifyPaystackWebhookSignature } from '../services/payment.service.js';
 
 const RENEWAL_AMOUNT_GHS = 500;
@@ -52,7 +53,8 @@ export async function renewSelfServe(req, res) {
 }
 
 async function activateSubscription(tenantId, reference, amount) {
-  const currentSubscription = await prisma.subscription.findUnique({ where: { tenantId } });
+  invalidateCached(tenantId);
+  const currentSubscription = await prisma.subscription.findUnique({ where: tenantId });
   const base =
     currentSubscription && currentSubscription.expiresAt > new Date()
       ? currentSubscription.expiresAt.getTime()
