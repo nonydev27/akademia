@@ -40,8 +40,6 @@ export default function Students() {
   const [form,     setForm]     = useState(EMPTY_FORM);
   const [saving,   setSaving]   = useState(false);
   const [classes,  setClasses]   = useState([]);
-  const [assignClassId, setAssignClassId] = useState('');
-  const [assignLoading, setAssignLoading] = useState(false);
 
   useEffect(() => {
     (async () => {

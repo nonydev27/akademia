@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { reportcardsApi } from '../../api/reportcards';
 import { termsApi }      from '../../api/terms';
+import { gradesApi }     from '../../api/grades';
 import Button from '../../components/ui/Button';
-import { ClipboardCheck, CheckCircle2, XCircle, Clock, Search } from 'lucide-react';
+import Modal  from '../../components/ui/Modal';
+import { ClipboardCheck, CheckCircle2, XCircle, Clock, Search, Eye, FileText } from 'lucide-react';
 
 const STATUS_CONFIG = {
   DRAFT:     { label: 'Draft',     color: 'bg-slate-100 text-slate-500' },
@@ -22,8 +24,8 @@ export default function PublishResults() {
   const [searched,    setSearched]    = useState(false);
   const [approving,   setApproving]   = useState(null);
   const [rejecting,   setRejecting]   = useState(null);
+  const [detailCard,  setDetailCard]  = useState(null);
 
-  // Labelled terms for the dropdown (replaces pasting a Term UUID).
   useEffect(() => {
     (async () => {
       try {
@@ -32,9 +34,10 @@ export default function PublishResults() {
         if (res.data.terms?.length && !termId) setTermId(res.data.terms[0].id);
       } catch { /* non-fatal */ }
     })();
-  }, []); // eslint-disable-line
+  }, []);
+
   async function loadCards() {
-    if (!termId.trim()) { toast.error('Enter a Term ID'); return; }
+    if (!termId.trim()) { toast.error('Select a term'); return; }
     setLoading(true);
     setSearched(false);
     try {
@@ -61,12 +64,35 @@ export default function PublishResults() {
     setRejecting(card.student.id);
     try {
       await reportcardsApi.reject(card.student.id, termId.trim());
-      toast.success(`Returned to teacher for revision`);
+      toast.success('Returned to teacher for revision');
       loadCards();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Rejection failed');
     } finally { setRejecting(null); }
   }
+
+  function showGradeDetail(card) {
+    setDetailCard(card);
+  }
+
+  const totalGrades = (card) => {
+    if (!card.grades?.length) return null;
+    const agg = card.grades.reduce((s, g) => s + (g.aggregate ?? 0), 0) / card.grades.length;
+    return agg.toFixed(1);
+  };
+
+  const gradeLetters = (card) => {
+    if (!card.grades?.length) return '—';
+    return card.grades.map((g) => {
+      const a = g.aggregate ?? 0;
+      if (a >= 80) return 'A';
+      if (a >= 70) return 'B';
+      if (a >= 60) return 'C';
+      if (a >= 50) return 'D';
+      if (a >= 40) return 'E';
+      return 'F';
+    }).join(' ');
+  };
 
   return (
     <div className="space-y-6">
@@ -77,12 +103,11 @@ export default function PublishResults() {
         </div>
       </div>
 
-      {/* Workflow explainer */}
       <div className="grid sm:grid-cols-3 gap-4">
         {[
           { icon: Clock, color: 'amber', title: '1. Teacher Submits', desc: 'After entering grades, the teacher submits for review.' },
-          { icon: ClipboardCheck, color: 'brand', title: '2. Admin Reviews', desc: 'You approve or return to the teacher for corrections.' },
-          { icon: CheckCircle2, color: 'emerald', title: '3. Released / Withheld', desc: 'Approved cards are released (or withheld if fees outstanding).' },
+          { icon: ClipboardCheck, color: 'brand', title: '2. Admin Reviews', desc: 'Review grades, then approve or return to teacher.' },
+          { icon: CheckCircle2, color: 'emerald', title: '3. Released / Withheld', desc: 'Approved cards released (or withheld for fees).' },
         ].map(({ icon: Icon, color, title, desc }) => (
           <div key={title} className={`p-4 rounded-2xl border bg-${color}-50 border-${color}-100`}>
             <Icon className={`w-6 h-6 text-${color}-600 mb-2`} />
@@ -92,7 +117,6 @@ export default function PublishResults() {
         ))}
       </div>
 
-      {/* Filters */}
       <div className="card p-5">
         <div className="grid sm:grid-cols-3 gap-3 items-end">
           <div>
@@ -121,7 +145,6 @@ export default function PublishResults() {
         </div>
       </div>
 
-      {/* Results table */}
       {searched && (
         <div className="card overflow-hidden animate-fade-in-up">
           {cards.length === 0 ? (
@@ -134,6 +157,8 @@ export default function PublishResults() {
               <thead>
                 <tr>
                   <th>Student</th>
+                  <th>Subjects</th>
+                  <th>Avg</th>
                   <th>Status</th>
                   <th>Submitted</th>
                   <th className="text-right">Actions</th>
@@ -142,11 +167,25 @@ export default function PublishResults() {
               <tbody>
                 {cards.map((card, i) => {
                   const cfg = STATUS_CONFIG[card.status] || STATUS_CONFIG.DRAFT;
+                  const subjects = card.grades?.map((g) => g.subjectName) || [];
                   return (
                     <tr key={card.id} style={{ animationDelay: `${i * 40}ms` }}>
                       <td>
                         <div className="font-semibold text-slate-800">{card.student.fullName}</div>
                         <div className="text-xs text-slate-400">{card.student.admissionNumber}</div>
+                      </td>
+                      <td>
+                        <div className="flex flex-wrap gap-1">
+                          {subjects.map((s) => (
+                            <span key={s} className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-lg">
+                              {s}
+                            </span>
+                          ))}
+                          {subjects.length === 0 && <span className="text-xs text-slate-300">No grades yet</span>}
+                        </div>
+                      </td>
+                      <td className="text-sm font-semibold text-slate-700">
+                        {totalGrades(card) ?? '—'}
                       </td>
                       <td>
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
@@ -157,6 +196,11 @@ export default function PublishResults() {
                         {card.submittedAt ? new Date(card.submittedAt).toLocaleDateString('en-GB') : '—'}
                       </td>
                       <td className="text-right">
+                        {card.grades?.length > 0 && (
+                          <Button size="sm" variant="outline" onClick={() => showGradeDetail(card)} className="mr-2">
+                            <Eye className="w-3.5 h-3.5" /> View
+                          </Button>
+                        )}
                         {card.status === 'SUBMITTED' && (
                           <div className="flex gap-2 justify-end">
                             <Button size="sm" variant="primary"
@@ -181,6 +225,38 @@ export default function PublishResults() {
           )}
         </div>
       )}
+
+      <Modal isOpen={!!detailCard} onClose={() => setDetailCard(null)} title="Grade Details" size="md">
+        {detailCard && (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-slate-700">{detailCard.student.fullName} — {detailCard.student.admissionNumber}</p>
+            <table className="table w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th>CA</th>
+                  <th>Mid</th>
+                  <th>Exam</th>
+                  <th>Aggregate</th>
+                  <th>Final</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detailCard.grades.map((g) => (
+                  <tr key={g.subjectId}>
+                    <td>{g.subjectName}</td>
+                    <td>{g.caScore ?? '—'}</td>
+                    <td>{g.midtermScore ?? '—'}</td>
+                    <td>{g.examScore ?? '—'}</td>
+                    <td className="font-semibold">{g.aggregate ?? '—'}</td>
+                    <td>{g.finalized ? <FileText className="w-4 h-4 text-emerald-500" /> : <span className="text-slate-300">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

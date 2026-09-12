@@ -14,8 +14,9 @@ import AdminDashboard    from './pages/SchoolAdmin/AdminDashboard';
 import Students          from './pages/SchoolAdmin/Students';
 import AdminAttendance   from './pages/SchoolAdmin/Attendance';
 import Fees              from './pages/SchoolAdmin/Fees';
-import Grades            from './pages/SchoolAdmin/Grades';
-import PublishResults    from './pages/SchoolAdmin/PublishResults';
+import Grades          from './pages/SchoolAdmin/Grades';
+import PublishResults  from './pages/SchoolAdmin/PublishResults';
+import Terms           from './pages/SchoolAdmin/Terms';
 import Communications    from './pages/SchoolAdmin/Communications';
 import Subscription      from './pages/SchoolAdmin/Subscription';
 import StaffManagement   from './pages/SchoolAdmin/StaffManagement';
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="/admin/fees"           element={<Fees />} />
           <Route path="/admin/grades"         element={<Grades />} />
           <Route path="/admin/results"        element={<PublishResults />} />
+          <Route path="/admin/terms"          element={<Terms />} />
           <Route path="/admin/communications" element={<Communications />} />
           <Route path="/admin/subscription"   element={<Subscription />} />
           <Route path="/admin/profile"        element={<AdminProfile />} />

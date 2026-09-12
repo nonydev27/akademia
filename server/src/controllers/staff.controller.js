@@ -15,6 +15,8 @@ import prisma from '../config/db.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { ApiError } from '../utils/ApiError.js';
 import { recordAudit } from '../services/audit.service.js';
+import { sendTeacherWelcomeEmail } from '../services/email.service.js';
+import { env } from '../config/env.js';
 
 // ─── Teacher CRUD ────────────────────────────────────────────────────────────
 
@@ -70,6 +72,17 @@ export async function createTeacher(req, res) {
     targetId:   teacher.id,
     metadata:   { email, fullName },
   });
+
+  const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
+  try {
+    await sendTeacherWelcomeEmail({
+      tenantId:   req.tenantId,
+      to:         email,
+      teacherName: fullName,
+      schoolName: tenant?.name ?? 'Akademia',
+      loginUrl:   env.CLIENT_URL,
+    });
+  } catch { /* non-fatal: email failure should not block teacher creation */ }
 
   res.status(201).json({
     teacher: {

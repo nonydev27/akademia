@@ -77,8 +77,8 @@ export async function approve(req, res) {
     const guardianEmail = student.guardians[0]?.guardian?.email;
     const guardianPhone = student.guardians[0]?.guardian?.phone;
     const attempts = [];
-    if (student.email) attempts.push(sendResultEmail({ tenantId: req.tenantId, to: student.email, studentName: student.fullName, pdfBuffer, termLabel: term.label }));
-    if (guardianEmail) attempts.push(sendResultEmail({ tenantId: req.tenantId, to: guardianEmail, studentName: student.fullName, pdfBuffer, termLabel: term.label }));
+    if (student.email) attempts.push(sendResultEmail({ tenantId: req.tenantId, to: student.email, studentName: student.fullName, pdfBuffer, termLabel: term.label, schoolName: tenant.name }));
+    if (guardianEmail) attempts.push(sendResultEmail({ tenantId: req.tenantId, to: guardianEmail, studentName: student.fullName, pdfBuffer, termLabel: term.label, schoolName: tenant.name }));
     if (guardianPhone) attempts.push(sendResultConfirmationSms({ tenantId: req.tenantId, to: guardianPhone, studentName: student.fullName }));
     const outcomes = await Promise.allSettled(attempts);
     outcomes.forEach((o) => { if (o.status === 'rejected') logger.warn('Result notification failed', { message: o.reason?.message }); });
@@ -91,12 +91,12 @@ export async function approve(req, res) {
     data:  { status: 'WITHHELD', approvedAt: new Date(), approvedBy: req.user.id },
   });
 
-  const guardianEmail = student.guardians[0]?.guardian?.email;
-  const guardianPhone = student.guardians[0]?.guardian?.phone;
-  const attempts = [];
-  if (guardianEmail) attempts.push(sendFeeReminderEmail({ tenantId: req.tenantId, to: guardianEmail, studentName: student.fullName, balance, termLabel: term.label }));
-  if (guardianPhone) attempts.push(sendFeeReminderSms({ tenantId: req.tenantId, to: guardianPhone, studentName: student.fullName, balance }));
-  await Promise.allSettled(attempts);
+    const guardianEmail = student.guardians[0]?.guardian?.email;
+    const guardianPhone = student.guardians[0]?.guardian?.phone;
+    const attempts = [];
+    if (guardianEmail) attempts.push(sendFeeReminderEmail({ tenantId: req.tenantId, to: guardianEmail, studentName: student.fullName, balance, termLabel: term.label, schoolName: tenant.name }));
+    if (guardianPhone) attempts.push(sendFeeReminderSms({ tenantId: req.tenantId, to: guardianPhone, studentName: student.fullName, balance }));
+    await Promise.allSettled(attempts);
 
   res.json({ reportCard: updated, status: 'WITHHELD', balance });
 }
@@ -131,7 +131,34 @@ export async function listForTerm(req, res) {
     orderBy: { student: { fullName: 'asc' } },
   });
 
-  res.json({ reportCards });
+  const studentIds = reportCards.map((rc) => rc.studentId);
+  const grades = await prisma.grade.findMany({
+    where: {
+      studentId: { in: studentIds },
+      termId,
+    },
+    include: { subject: { select: { id: true, name: true, code: true } } },
+  });
+
+  const gradesByStudent = {};
+  grades.forEach((g) => {
+    if (!gradesByStudent[g.studentId]) gradesByStudent[g.studentId] = [];
+    gradesByStudent[g.studentId].push(g);
+  });
+
+  res.json({ reportCards: reportCards.map((rc) => ({
+    ...rc,
+    grades: (gradesByStudent[rc.studentId] || []).map((g) => ({
+      subjectId: g.subject.id,
+      subjectName: g.subject.name,
+      subjectCode: g.subject.code,
+      caScore: g.caScore,
+      midtermScore: g.midtermScore,
+      examScore: g.examScore,
+      aggregate: g.aggregate,
+      finalized: g.finalized,
+    })),
+  })) });
 }
 
 export async function getOne(req, res) {

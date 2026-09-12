@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, CheckSquare, Wallet,
   NotebookPen, ClipboardCheck, Send, KeyRound, LogOut, ChevronLeft,
   ChevronRight, Menu, AlertTriangle, ArrowRight, HelpCircle, Users2,
-  BookOpen, UserCircle, Building2, Layers,
+  BookOpen, UserCircle, Building2, Layers, Calendar,
 } from 'lucide-react';
 
 const ICON_SIZE = 'w-[18px] h-[18px]';
@@ -29,6 +29,7 @@ const NAV_SCHOOL_ADMIN = [
   { to: '/admin/fees',           icon: <Wallet className={ICON_SIZE} />,          label: 'Fees' },
   { to: '/admin/grades',         icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grades' },
   { to: '/admin/results',        icon: <ClipboardCheck className={ICON_SIZE} />,  label: 'Publish Results' },
+  { to: '/admin/terms',          icon: <Calendar className={ICON_SIZE} />,        label: 'Terms' },
   { to: '/admin/communications', icon: <Send className={ICON_SIZE} />,            label: 'Communications' },
   { to: '/admin/subscription',   icon: <KeyRound className={ICON_SIZE} />,        label: 'Subscription' },
   { to: '/admin/profile',        icon: <UserCircle className={ICON_SIZE} />,      label: 'My Profile' },
