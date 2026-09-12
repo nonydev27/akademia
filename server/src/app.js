@@ -19,6 +19,9 @@ import communicationRoutes from './routes/communication.routes.js';
 import subscriptionRoutes from './routes/subscription.routes.js';
 import staffRoutes        from './routes/staff.routes.js';
 import subjectRoutes      from './routes/subject.routes.js';
+import classRoutes        from './routes/class.routes.js';
+import gradeBandRoutes   from './routes/gradeBands.routes.js';
+import termRoutes         from './routes/term.routes.js';
 import profileRoutes      from './routes/profile.routes.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 
@@ -46,6 +49,9 @@ app.use('/api/v1/communications', communicationRoutes);
 app.use('/api/v1/subscriptions',  subscriptionRoutes);
 app.use('/api/v1/staff-members',  staffRoutes);
 app.use('/api/v1/subjects',       subjectRoutes);
+app.use('/api/v1/classes',        classRoutes);
+app.use('/api/v1/grade-bands',    gradeBandRoutes);
+app.use('/api/v1/terms',          termRoutes);
 app.use('/api/v1/profile',        profileRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));

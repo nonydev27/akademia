@@ -46,7 +46,7 @@ async function main() {
     return;
   }
 
-  const tenant = await prisma.tenant.create({ data: { name: 'Demo School', schoolLevel: 'JHS' } });
+  const tenant = await prisma.tenant.create({ data: { name: 'Demo School', code: 'DMS', schoolLevel: 'JHS' } });
 
   await prisma.subscription.create({
     data: { tenantId: tenant.id, status: 'ACTIVE', expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) },
@@ -72,20 +72,20 @@ async function main() {
     },
   });
 
-  const klass = await prisma.class.create({ data: { tenantId: tenant.id, name: 'JHS 2' } });
+  const klass = await prisma.class.create({ data: { tenantId: tenant.id, name: 'JHS 2', code: 'JHS2-A' } });
 
-  const subjectMath = await prisma.subject.create({ data: { tenantId: tenant.id, name: 'Mathematics' } });
-  const subjectEnglish = await prisma.subject.create({ data: { tenantId: tenant.id, name: 'English Language' } });
+  const subjectMath = await prisma.subject.create({ data: { tenantId: tenant.id, name: 'Mathematics', code: 'MATH' } });
+  const subjectEnglish = await prisma.subject.create({ data: { tenantId: tenant.id, name: 'English Language', code: 'ENGLP2' } });
 
   await prisma.feeStructure.create({
     data: { tenantId: tenant.id, termId: term.id, amount: 500, label: 'JHS 2 - Term 1 fees' },
   });
 
   const student1 = await prisma.student.create({
-    data: { tenantId: tenant.id, admissionNumber: 'DS-0001', fullName: 'Ama Owusu', email: 'ama.owusu@example.com' },
+    data: { tenantId: tenant.id, admissionNumber: 'DMS-001', fullName: 'Ama Owusu', email: 'ama.owusu@example.com' },
   });
   const student2 = await prisma.student.create({
-    data: { tenantId: tenant.id, admissionNumber: 'DS-0002', fullName: 'Kwame Mensah' },
+    data: { tenantId: tenant.id, admissionNumber: 'DMS-002', fullName: 'Kwame Mensah' },
   });
 
   await prisma.enrollment.createMany({

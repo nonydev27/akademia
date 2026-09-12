@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { gradesApi }   from '../../api/grades';
 import { subjectsApi } from '../../api/subjects';
+import { staffApi }    from '../../api/staff';
+import { termsApi }    from '../../api/terms';
 import Button  from '../../components/ui/Button';
 import Modal   from '../../components/ui/Modal';
 import Tooltip from '../../components/ui/Tooltip';
@@ -37,6 +40,8 @@ export default function GradeEntry() {
   const [verified,    setVerified]    = useState(null); // { id, name, code }
 
   // Sheet state
+  const [myAssignments, setMyAssignments] = useState([]); // [{ class, subject, accessCode }]
+  const [terms,     setTerms]     = useState([]);          // labelled term options
   const [classId,   setClassId]   = useState('');
   const [termId,    setTermId]    = useState('');
   const [sheet,     setSheet]     = useState([]);
@@ -46,6 +51,33 @@ export default function GradeEntry() {
   const [saving,    setSaving]    = useState(false);
   const [finalizeModal, setFinalizeModal] = useState(false);
   const [finalizing,    setFinalizing]    = useState(false);
+
+  // Load the teacher's own assignments so classes can be chosen from a list
+  // (code-based) instead of pasted as UUIDs.
+  const loadMyAssignments = useCallback(async () => {
+    try {
+      const res = await staffApi.mine();
+      setMyAssignments(res.data.assignments || []);
+    } catch { /* non-fatal: dropdown simply stays empty */ }
+  }, []);
+
+  useEffect(() => { loadMyAssignments(); }, [loadMyAssignments]);
+
+  // Load labelled terms so the teacher picks one instead of pasting a UUID.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await termsApi.list();
+        setTerms(res.data.terms || []);
+        if (res.data.terms?.length && !termId) setTermId(res.data.terms[0].id);
+      } catch { /* non-fatal */ }
+    })();
+  }, []); // eslint-disable-line
+
+  // Classes the teacher can enter grades for, deduped.
+  const myClasses = Array.from(
+    new Map(myAssignments.map((a) => [a.class.id, a.class])).values()
+  );
 
   async function handleVerifyPin(e) {
     e.preventDefault();
@@ -160,6 +192,12 @@ export default function GradeEntry() {
               <CheckCircle2 className="w-4 h-4" /> Verify &amp; Enter
             </Button>
           </form>
+          <p className="text-xs text-slate-400 mt-4">
+            Forgot your PIN?{' '}
+            <Link to="/staff/subjects" className="text-brand-600 hover:text-brand-800 font-semibold underline">
+              Reset it in My Subjects
+            </Link>
+          </p>
         </div>
       </div>
     );
@@ -197,14 +235,22 @@ export default function GradeEntry() {
       <div className="card p-5">
         <div className="grid sm:grid-cols-3 gap-3 items-end">
           <div>
-            <label className="label">Class ID</label>
-            <input className="input font-mono text-xs" placeholder="Paste Class UUID…"
-              value={classId} onChange={(e) => setClassId(e.target.value)} />
+            <label className="label">Class</label>
+            <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
+              <option value="">Select your class…</option>
+              {myClasses.map((c) => (
+                <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+              ))}
+            </select>
           </div>
           <div>
-            <label className="label">Term ID</label>
-            <input className="input font-mono text-xs" placeholder="Paste Term UUID…"
-              value={termId} onChange={(e) => setTermId(e.target.value)} />
+            <label className="label">Term</label>
+            <select className="input" value={termId} onChange={(e) => setTermId(e.target.value)}>
+              <option value="">Select a term…</option>
+              {terms.map((t) => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
           </div>
           <Button variant="primary" onClick={loadSheet} loading={loading}>Load Sheet</Button>
         </div>

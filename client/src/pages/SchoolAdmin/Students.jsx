@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { studentsApi } from '../../api/students';
+import { classesApi }  from '../../api/classes';
 import DataTable   from '../../components/ui/DataTable';
 import Modal       from '../../components/ui/Modal';
 import Button      from '../../components/ui/Button';
@@ -38,6 +39,16 @@ export default function Students() {
   const [step,     setStep]     = useState(0);
   const [form,     setForm]     = useState(EMPTY_FORM);
   const [saving,   setSaving]   = useState(false);
+  const [classes,  setClasses]   = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await classesApi.list();
+        setClasses(res.data.classes || []);
+      } catch { /* non-fatal */ }
+    })();
+  }, []);
 
   const [selected,       setSelected]       = useState(null);
   const [detailLoading,  setDetailLoading]  = useState(false);
@@ -190,8 +201,9 @@ export default function Students() {
         {step === 0 && (
           <div className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input label="Admission Number *" value={form.admissionNumber}
-                onChange={(e) => setField('admissionNumber', e.target.value)} required />
+              <Input label="Student ID (leave blank to auto-generate)" value={form.admissionNumber}
+                placeholder="e.g. VIS-001 — auto if left blank"
+                onChange={(e) => setField('admissionNumber', e.target.value)} />
               <Input label="Full Name *" value={form.fullName}
                 onChange={(e) => setField('fullName', e.target.value)} required />
               <Input label="Date of Birth" type="date" value={form.dateOfBirth}
@@ -226,9 +238,16 @@ export default function Students() {
             <Input label="Name of Previous School" value={form.previousSchool}
               placeholder="Leave blank if not applicable"
               onChange={(e) => setField('previousSchool', e.target.value)} />
-            <Input label="Class ID (optional)" value={form.classId}
-              placeholder="UUID of the class to enroll in"
-              onChange={(e) => setField('classId', e.target.value)} />
+            <div>
+              <label className="label">Assign to Class</label>
+              <select className="input" value={form.classId}
+                onChange={(e) => setField('classId', e.target.value)}>
+                <option value="">No class yet</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
@@ -424,6 +443,21 @@ export default function Students() {
                     </div>
                   ))}
 
+                  {/* Class Assignment */}
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Class Assignment</h3>
+                    <div className="card p-3 space-y-1">
+                      {selected.enrollments?.[0] ? (
+                        <ClassAssignmentPanel student={selected} classes={classes} onAssigned={() => openDetail({ id: selected.id })} />
+                      ) : (
+                        <div className="flex items-center gap-2 py-1">
+                          <span className="text-xs text-slate-500 w-28 flex-shrink-0">Current Class</span>
+                          <span className="text-sm text-slate-300 italic">No class assigned</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Fee balance */}
                   {selected.feeBalance != null && (
                     <div className="card p-3">
@@ -441,6 +475,71 @@ export default function Students() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ClassAssignmentPanel({ student, classes, onAssigned }) {
+  const [classId, setClassId] = useState(student.enrollments[0].class.id);
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState('');
+
+  async function handleAssign() {
+    if (!classId) return;
+    setSaving(true);
+    setError('');
+    try {
+      await studentsApi.update(student.id, { classId });
+      toast.success(`Assigned to ${classes.find((c) => c.id === classId)?.name || 'class'}`);
+      onAssigned();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Assignment failed');
+    } finally { setSaving(false); }
+  }
+
+  async function handleClear() {
+    setSaving(true);
+    setError('');
+    try {
+      await studentsApi.update(student.id, { classId: null });
+      toast.success('Class assignment removed');
+      onAssigned();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Clear failed');
+    } finally { setSaving(false); }
+  }
+
+  const currentClass = student.enrollments[0].class;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 py-1">
+        <span className="text-xs text-slate-500 w-28 flex-shrink-0">Current</span>
+        <span className="text-sm text-slate-700 font-medium">
+          {currentClass.name} <code className="text-xs bg-slate-100 px-1 rounded font-mono">{currentClass.code}</code>
+        </span>
+      </div>
+      <div className="flex items-center gap-2 py-1">
+        <span className="text-xs text-slate-500 w-28 flex-shrink-0">Reassign</span>
+        <select
+          className="input text-xs py-1 flex-1"
+          value={classId}
+          onChange={(e) => setClassId(e.target.value)}
+        >
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+          ))}
+        </select>
+      </div>
+      {error && <p className="text-xs text-red-500 pl-32">{error}</p>}
+      <div className="flex gap-2 pl-32">
+        <Button size="sm" variant="primary" loading={saving} onClick={handleAssign}>
+          Assign
+        </Button>
+        <Button size="sm" variant="ghost" onClick={handleClear}>
+          Remove
+        </Button>
+      </div>
     </div>
   );
 }

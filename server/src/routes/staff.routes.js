@@ -18,16 +18,19 @@ import * as controller               from '../controllers/staff.controller.js';
 
 const router = Router();
 
-router.use(requireAuth, attachTenant, requireActiveSubscription, requireRole('SCHOOL_ADMIN'));
+router.use(requireAuth, attachTenant, requireActiveSubscription);
 
-// ── Assignments (MUST come before /:id to avoid param collision) ──────────────
-router.get('/assignments',                  controller.listAssignments);
-router.post('/assignments',                 validate({ body: controller.assignSchema }), controller.assign);
-router.delete('/assignments/:assignmentId', controller.removeAssignment);
+// Teacher portal: the caller's own assignments (STAFF) — MUST be before /:id.
+router.get('/mine', requireRole('STAFF'), controller.listMyAssignments);
+
+// ── Assignments (admin only; MUST come before /:id) ──────────────────────────
+router.get('/assignments',                  requireRole('SCHOOL_ADMIN'), controller.listAssignments);
+router.post('/assignments',                 requireRole('SCHOOL_ADMIN'), validate({ body: controller.assignSchema }), controller.assign);
+router.delete('/assignments/:assignmentId', requireRole('SCHOOL_ADMIN'), controller.removeAssignment);
 
 // ── Teacher CRUD ──────────────────────────────────────────────────────────────
-router.get('/',       controller.listTeachers);
-router.post('/',      validate({ body: controller.createTeacherSchema }), controller.createTeacher);
-router.delete('/:id', controller.deactivateTeacher);
+router.get('/',       requireRole('SCHOOL_ADMIN'), controller.listTeachers);
+router.post('/',      requireRole('SCHOOL_ADMIN'), validate({ body: controller.createTeacherSchema }), controller.createTeacher);
+router.delete('/:id', requireRole('SCHOOL_ADMIN'), controller.deactivateTeacher);
 
 export default router;

@@ -21,5 +21,6 @@ router.patch(
   validate({ body: controller.updateSubscriptionSchema }),
   controller.updateSubscription
 );
+router.post('/:id/admin', requireRole('SUPER_ADMIN'), validate({ body: controller.createTenantAdminSchema }), controller.createTenantAdmin);
 
 export default router;

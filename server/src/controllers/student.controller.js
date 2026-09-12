@@ -6,6 +6,7 @@ import { z } from 'zod';
 import prisma from '../config/db.js';
 import { ApiError } from '../utils/ApiError.js';
 import { getStudentBalance } from '../services/fee.service.js';
+import { nextStudentId, deriveClassCode } from '../services/code.service.js';
 
 export const listQuerySchema = z.object({
   search:   z.string().optional(),
@@ -43,7 +44,9 @@ export async function list(req, res) {
 }
 
 export const createStudentSchema = z.object({
-  admissionNumber:  z.string().min(1),
+  // admissionNumber is optional: when omitted it is auto-generated as
+  // <SCHOOL_CODE>-001 from the school's running sequence.
+  admissionNumber:  z.string().min(1).optional(),
   fullName:         z.string().min(2),
   dateOfBirth:      z.coerce.date().optional(),
   gender:           z.string().optional(),
@@ -66,15 +69,25 @@ export const createStudentSchema = z.object({
 
 export async function create(req, res) {
   const {
-    admissionNumber, fullName, dateOfBirth, gender, nationality, religion,
+    admissionNumber: providedNumber, fullName, dateOfBirth, gender, nationality, religion,
     address, email, phone, previousSchool, classId,
     sports, clubs, otherActivities, nhisNumber, profilePicUrl,
   } = req.body;
 
+  // If a class was supplied, make sure it belongs to this school.
+  if (classId) {
+    const klass = await prisma.class.findFirst({ where: { id: classId, tenantId: req.tenantId } });
+    if (!klass) throw ApiError.badRequest('Class not found in this school');
+  }
+
+  // Student ID: use the admin's value if given, otherwise auto-generate
+  // <SCHOOL_CODE>-NNN from this school's running sequence.
+  const admissionNumber = providedNumber?.trim() || (await nextStudentId(req.tenantId));
+
   const existing = await prisma.student.findUnique({
     where: { tenantId_admissionNumber: { tenantId: req.tenantId, admissionNumber } },
   });
-  if (existing) throw ApiError.badRequest('A student with that admission number already exists');
+  if (existing) throw ApiError.badRequest('A student with that Student ID already exists');
 
   const student = await prisma.student.create({
     data: {
@@ -124,6 +137,8 @@ export async function getById(req, res) {
 
 export const updateStudentSchema = z.object({
   fullName:        z.string().min(2).optional(),
+  admissionNumber: z.string().min(1).optional(),
+  classId:         z.string().uuid().nullable().optional(),
   dateOfBirth:     z.coerce.date().optional(),
   gender:          z.string().optional(),
   nationality:     z.string().optional(),
@@ -142,8 +157,39 @@ export const updateStudentSchema = z.object({
 
 export async function update(req, res) {
   await findTenantStudent(req.tenantId, req.params.id);
-  const student = await prisma.student.update({ where: { id: req.params.id }, data: req.body });
-  res.json({ student });
+  const { classId, ...data } = req.body;
+
+  // If admissionNumber is being changed, keep it unique per school.
+  if (data.admissionNumber) {
+    const clash = await prisma.student.findFirst({
+      where: {
+        tenantId: req.tenantId,
+        admissionNumber: data.admissionNumber,
+        NOT: { id: req.params.id },
+      },
+    });
+    if (clash) throw ApiError.badRequest('Another student already uses that Student ID');
+  }
+
+  const student = await prisma.student.update({ where: { id: req.params.id }, data });
+
+  // Class assignment: null clears it, a value (re)assigns the student.
+  if (classId !== undefined) {
+    if (classId) {
+      const klass = await prisma.class.findFirst({ where: { id: classId, tenantId: req.tenantId } });
+      if (!klass) throw ApiError.badRequest('Class not found in this school');
+    }
+    await prisma.enrollment.deleteMany({ where: { studentId: req.params.id } });
+    if (classId) {
+      await prisma.enrollment.create({ data: { studentId: req.params.id, classId } });
+    }
+  }
+
+  const fresh = await prisma.student.findUnique({
+    where: { id: req.params.id },
+    include: { enrollments: { include: { class: true } },
+  } });
+  res.json({ student: fresh });
 }
 
 export async function deactivate(req, res) {

@@ -5,7 +5,8 @@
 import { z } from 'zod';
 import prisma from '../config/db.js';
 import { ApiError } from '../utils/ApiError.js';
-import { createTenantWithAdmin } from '../services/tenant.service.js';
+import { createTenantWithAdmin, provisionTenantAdmin } from '../services/tenant.service.js';
+import { invalidateCached } from '../middleware/subscription.middleware.js';
 
 export const createTenantSchema = z.object({
   schoolName: z.string().min(2),
@@ -56,7 +57,30 @@ export const updateSubscriptionSchema = z.object({
   graceEndsAt: z.coerce.date().nullable().optional(),
 });
 
+export const createTenantAdminSchema = z.object({
+  fullName: z.string().min(2),
+  email: z.string().email(),
+  password: z.string().min(8),
+  phone: z.string().optional(),
+});
+
+export async function createTenantAdmin(req, res) {
+  const user = await createTenantAdmin(req.params.id, req.body);
+  res.status(201).json({
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      active: user.active,
+      createdAt: user.createdAt,
+    },
+  });
+}
+
 export async function updateSubscription(req, res) {
+  invalidateCached(req.tenantId);
   const subscription = await prisma.subscription.update({
     where: { tenantId: req.params.id },
     data: req.body,

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { staffApi } from '../../api/staff';
+import { classesApi } from '../../api/classes';
+import { subjectsApi } from '../../api/subjects';
 import Modal   from '../../components/ui/Modal';
 import Button  from '../../components/ui/Button';
 import Input   from '../../components/ui/Input';
@@ -10,7 +12,7 @@ import {
   UserX, UserCheck, Link2, Unlink,
 } from 'lucide-react';
 
-// ─── Helper: active badge ─────────────────────────────────────────────────────
+// ─── Helper: active badge ─────────────────────────────────────────────
 function ActiveBadge({ active }) {
   return (
     <span
@@ -25,7 +27,7 @@ function ActiveBadge({ active }) {
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────
 export default function StaffManagement() {
   const [tab, setTab] = useState('teachers'); // 'teachers' | 'assignments'
 
@@ -67,7 +69,7 @@ export default function StaffManagement() {
   );
 }
 
-// ─── Teachers Tab ─────────────────────────────────────────────────────────────
+// ─── Teachers Tab ─────────────────────────────────────────────────────
 function TeachersTab() {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -106,9 +108,7 @@ function TeachersTab() {
       fetchTeachers();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create teacher');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function handleDeactivate(teacher) {
@@ -120,9 +120,7 @@ function TeachersTab() {
       fetchTeachers();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to deactivate teacher');
-    } finally {
-      setDeactivating(null);
-    }
+    } finally { setDeactivating(null); }
   }
 
   return (
@@ -324,7 +322,7 @@ function TeachersTab() {
   );
 }
 
-// ─── Assignments Tab ──────────────────────────────────────────────────────────
+// ─── Assignments Tab ──────────────────────────────────────────────────
 function AssignmentsTab() {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -333,6 +331,10 @@ function AssignmentsTab() {
   const [removing, setRemoving]       = useState(null);
 
   const [form, setForm] = useState({ teacherId: '', classId: '', subjectId: '' });
+  const [teachers, setTeachers] = useState([]);
+  const [classes, setClasses]   = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
 
   const fetchAssignments = useCallback(async () => {
     setLoading(true);
@@ -341,10 +343,23 @@ function AssignmentsTab() {
       setAssignments(res.data.assignments);
     } catch {
       toast.error('Failed to load assignments');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, []);
+
+  async function loadDropdownData() {
+    setLoadingData(true);
+    try {
+      const [tRes, cRes, sRes] = await Promise.all([
+        staffApi.list(),
+        classesApi.list(),
+        subjectsApi.list(),
+      ]);
+      setTeachers(tRes.data.teachers || []);
+      setClasses(cRes.data.classes || []);
+      setSubjects(sRes.data.subjects || []);
+    } catch { /* non-fatal */ }
+    finally { setLoadingData(false); }
+  }
 
   useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
 
@@ -367,9 +382,7 @@ function AssignmentsTab() {
       fetchAssignments();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create assignment');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function handleRemove(assignment) {
@@ -383,10 +396,21 @@ function AssignmentsTab() {
       fetchAssignments();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to remove assignment');
-    } finally {
-      setRemoving(null);
-    }
+    } finally { setRemoving(null); }
   }
+
+  const teacherLabel = (id) => {
+    const t = teachers.find((t) => t.id === id);
+    return t ? `${t.fullName} (${t.email})` : id;
+  };
+  const className = (id) => {
+    const c = classes.find((c) => c.id === id);
+    return c ? `${c.name} (${c.code})` : id;
+  };
+  const subjectLabel = (id) => {
+    const s = subjects.find((s) => s.id === id);
+    return s ? `${s.name} (${s.code})` : id;
+  };
 
   return (
     <>
@@ -395,7 +419,7 @@ function AssignmentsTab() {
         <p className="text-sm text-slate-500">
           {assignments.length} assignment{assignments.length !== 1 ? 's' : ''} configured
         </p>
-        <Button variant="primary" onClick={() => setShowAssign(true)}>
+        <Button variant="primary" onClick={() => { loadDropdownData(); setShowAssign(true); }}>
           <Plus className="w-4 h-4" /> Assign Teacher
         </Button>
       </div>
@@ -435,19 +459,19 @@ function AssignmentsTab() {
               {assignments.map((a, i) => (
                 <tr key={a.id} style={{ animationDelay: `${i * 40}ms` }}>
                   <td>
-                    <div className="font-semibold text-slate-800">{a.teacher?.fullName}</div>
+                    <div className="font-semibold text-slate-800">{a.teacher?.fullName || teacherLabel(a.teacherId)}</div>
                     <div className="text-xs text-slate-400">{a.teacher?.email}</div>
                   </td>
                   <td>
                     <span className="inline-flex items-center px-2 py-0.5 rounded-lg
                                      bg-slate-100 text-slate-700 text-xs font-medium">
-                      {a.class?.name}
+                      {className(a.classId)}
                     </span>
                   </td>
                   <td>
                     <span className="inline-flex items-center px-2 py-0.5 rounded-lg
                                      bg-indigo-50 text-indigo-700 text-xs font-medium">
-                      {a.subject?.name}
+                      {subjectLabel(a.subjectId)}
                     </span>
                   </td>
                   <td className="text-right">
@@ -476,56 +500,70 @@ function AssignmentsTab() {
         size="sm"
       >
         <form onSubmit={handleAssign} className="space-y-4">
-          <p className="text-sm text-slate-500">
-            Paste the IDs from Prisma Studio (<code className="text-xs bg-slate-100 px-1 rounded">npx prisma studio</code>)
-            or from the API. The assignment is idempotent — creating the same one twice is safe.
-          </p>
+          {loadingData && (
+            <div className="space-y-2 animate-pulse">
+              {[1, 2, 3].map((i) => <div key={i} className="skeleton h-10 rounded-xl" />)}
+            </div>
+          )}
+          {!loadingData && (
+            <>
+              <div>
+                <label className="label flex items-center gap-1.5">
+                  Teacher <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="teacherId"
+                  className="input"
+                  value={form.teacherId}
+                  onChange={handleFormChange}
+                  required
+                >
+                  <option value="">Select a teacher…</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>{t.fullName} ({t.email})</option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="label flex items-center gap-1.5">
-              Teacher ID (UUID) <span className="text-red-500">*</span>
-              <Tooltip tip="Copy the teacher's ID from the Teachers tab above, or from Prisma Studio → User table." />
-            </label>
-            <Input
-              name="teacherId"
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              value={form.teacherId}
-              onChange={handleFormChange}
-              className="font-mono text-xs"
-              required
-            />
-          </div>
+              <div>
+                <label className="label flex items-center gap-1.5">
+                  Class <span className="text-red-500">*</span>
+                  <Tooltip tip="Shown as Class Name (Class ID). Teachers pick from this list." />
+                </label>
+                <select
+                  name="classId"
+                  className="input"
+                  value={form.classId}
+                  onChange={handleFormChange}
+                  required
+                >
+                  <option value="">Select a class…</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="label flex items-center gap-1.5">
-              Class ID (UUID) <span className="text-red-500">*</span>
-              <Tooltip tip="The class the teacher will teach (e.g. JHS 2). Find the ID in Prisma Studio → Class table." />
-            </label>
-            <Input
-              name="classId"
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              value={form.classId}
-              onChange={handleFormChange}
-              className="font-mono text-xs"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="label flex items-center gap-1.5">
-              Subject ID (UUID) <span className="text-red-500">*</span>
-              <Tooltip tip="The subject the teacher will enter grades for (e.g. Mathematics). Find it in Prisma Studio → Subject table." />
-            </label>
-            <Input
-              name="subjectId"
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              value={form.subjectId}
-              onChange={handleFormChange}
-              className="font-mono text-xs"
-              required
-            />
-          </div>
-
+              <div>
+                <label className="label flex items-center gap-1.5">
+                  Subject <span className="text-red-500">*</span>
+                  <Tooltip tip="Shown as Subject Name (Subject Code). Teachers pick from this list." />
+                </label>
+                <select
+                  name="subjectId"
+                  className="input"
+                  value={form.subjectId}
+                  onChange={handleFormChange}
+                  required
+                >
+                  <option value="">Select a subject…</option>
+                  {subjects.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
           <div className="flex gap-3 pt-2">
             <Button type="submit" variant="primary" loading={saving} className="flex-1">
               <Link2 className="w-4 h-4" /> Assign

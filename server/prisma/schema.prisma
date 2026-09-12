@@ -56,6 +56,8 @@ enum CommunicationStatus {
 model Tenant {
   id           String      @id @default(uuid())
   name         String
+  code         String      @unique // school initials, e.g. VIS for Vilaworld International School
+  studentSeq   Int         @default(0) // last used student number -> builds VIS-001, VIS-002…
   schoolLevel  SchoolLevel
   adminPhone   String?
   adminContact String?
@@ -71,6 +73,7 @@ model Tenant {
   feeStructures  FeeStructure[]
   auditLogs      AuditLog[]
   communications Communication[]
+  gradeBands     GradeBand[]
 }
 
 model Subscription {
@@ -105,6 +108,12 @@ model User {
   @@index([tenantId])
 }
 
+enum TermStatus {
+  ACTIVE
+  INACTIVE
+  UPCOMING
+}
+
 // --- Academic structure ---
 
 model AcademicYear {
@@ -123,6 +132,7 @@ model Term {
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
   academicYearId String
   label          String
+  status         TermStatus   @default(UPCOMING)
   startDate      DateTime
   endDate        DateTime
 
@@ -138,10 +148,11 @@ model Class {
   tenant   Tenant @relation(fields: [tenantId], references: [id])
   tenantId String
   name     String
-
+  code     String // admin-facing Class ID, e.g. JHS2-A
   enrollments        Enrollment[]
   teacherAssignments TeacherClassSubject[]
 
+  @@unique([tenantId, code])
   @@index([tenantId])
 }
 
@@ -162,6 +173,8 @@ model Student {
   id               String    @id @default(uuid())
   tenant           Tenant    @relation(fields: [tenantId], references: [id])
   tenantId         String
+  // admissionNumber is the admin/teacher-facing Student ID, e.g. VIS-001.
+  // Generated from the school code + a per-school sequence.
   admissionNumber  String
   fullName         String
   dateOfBirth      DateTime?
@@ -236,13 +249,27 @@ model Attendance {
 
 // --- Subjects & grading ---
 
+model GradeBand {
+  id       String @id @default(uuid())
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenantId String
+  letter   String // "A", "B", "C", etc.
+  minScore Float
+  maxScore Float
+  remark   String // "Excellent", "Very Good", etc.
+
+  @@unique([tenantId, letter])
+  @@index([tenantId])
+}
+
 model Subject {
   id       String @id @default(uuid())
   tenant   Tenant @relation(fields: [tenantId], references: [id])
   tenantId String
   name     String
-  code     String   // e.g. ENGLP2
+  code     String   // admin-facing Subject ID, e.g. ENGLP2
   pin      String?  // hashed 4-digit pin set by teacher
+  pinOwnerId String? // the teacher (User) who set/owns the PIN
 
   grades               Grade[]
   teacherAssignments   TeacherClassSubject[]
@@ -253,15 +280,18 @@ model Subject {
 }
 
 /// Assigns a teacher (STAFF user) to a specific class + subject.
+/// accessCode is the teacher-facing surrogate key that identifies this
+/// assignment without ever exposing a UUID.
 model TeacherClassSubject {
-  id        String   @id @default(uuid())
-  teacher   User     @relation(fields: [teacherId], references: [id])
-  teacherId String
-  class     Class    @relation(fields: [classId], references: [id])
-  classId   String
-  subject   Subject  @relation(fields: [subjectId], references: [id])
-  subjectId String
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  teacher    User     @relation(fields: [teacherId], references: [id])
+  teacherId  String
+  class      Class    @relation(fields: [classId], references: [id])
+  classId    String
+  subject    Subject  @relation(fields: [subjectId], references: [id])
+  subjectId  String
+  accessCode String?  // e.g. T-AO-ENGLP2-JHS2A (shown to teacher, not a UUID)
+  createdAt  DateTime @default(now())
 
   @@unique([teacherId, classId, subjectId])
   @@index([teacherId])

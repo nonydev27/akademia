@@ -23,7 +23,13 @@ axiosClient.interceptors.request.use((config) => {
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    const status = error.response?.status;
+    const onLoginPage =
+      typeof window !== 'undefined' && window.location.pathname.startsWith('/login');
+
+    // A 401 while already signing in is a failed login / missing profile —
+    // let the caller surface the real message instead of reloading the page.
+    if (status === 401 && typeof window !== 'undefined' && !onLoginPage) {
       setAccessToken(null);
       window.location.href = '/login';
     }

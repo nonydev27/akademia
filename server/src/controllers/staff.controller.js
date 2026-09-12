@@ -15,6 +15,8 @@ import prisma from '../config/db.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { ApiError } from '../utils/ApiError.js';
 import { recordAudit } from '../services/audit.service.js';
+import { sendTeacherWelcomeEmail } from '../services/email.service.js';
+import { env } from '../config/env.js';
 
 // ─── Teacher CRUD ────────────────────────────────────────────────────────────
 
@@ -71,6 +73,17 @@ export async function createTeacher(req, res) {
     metadata:   { email, fullName },
   });
 
+  const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
+  try {
+    await sendTeacherWelcomeEmail({
+      tenantId:   req.tenantId,
+      to:         email,
+      teacherName: fullName,
+      schoolName: tenant?.name ?? 'Akademia',
+      loginUrl:   env.CLIENT_URL,
+    });
+  } catch { /* non-fatal: email failure should not block teacher creation */ }
+
   res.status(201).json({
     teacher: {
       id:        teacher.id,
@@ -91,8 +104,8 @@ export async function listTeachers(req, res) {
       id: true, fullName: true, email: true, active: true, createdAt: true,
       teacherAssignments: {
         include: {
-          class:   { select: { id: true, name: true } },
-          subject: { select: { id: true, name: true } },
+          class:   { select: { id: true, name: true, code: true } },
+          subject: { select: { id: true, name: true, code: true } },
         },
       },
     },
@@ -152,13 +165,19 @@ export async function assign(req, res) {
   if (!klass)   throw ApiError.notFound('Class not found in this school');
   if (!subject) throw ApiError.notFound('Subject not found in this school');
 
+  // Teacher-facing surrogate key, e.g. T-AO-ENGLP2-JHS2A (never a UUID).
+  const teacherInitials = (teacher.fullName.match(/\b[A-Za-z]/g) || ['T'])
+    .slice(0, 2).join('').toUpperCase();
+  const accessCode = `T-${teacherInitials}-${subject.code}-${klass.code}`;
+
+
   const assignment = await prisma.teacherClassSubject.upsert({
     where:  { teacherId_classId_subjectId: { teacherId, classId, subjectId } },
-    create: { teacherId, classId, subjectId },
-    update: {},
+    create: { teacherId, classId, subjectId, accessCode },
+    update: { accessCode },
     include: {
-      class:   { select: { id: true, name: true } },
-      subject: { select: { id: true, name: true } },
+      class:   { select: { id: true, name: true, code: true } },
+      subject: { select: { id: true, name: true, code: true } },
       teacher: { select: { id: true, fullName: true } },
     },
   });
@@ -193,12 +212,14 @@ export async function removeAssignment(req, res) {
 
 export async function listAssignments(req, res) {
   const { classId, teacherId } = req.query;
+  // A teacher may only ever see their own assignments.
+  const effectiveTeacherId = req.user.role === 'STAFF' ? req.user.id : teacherId;
 
   const assignments = await prisma.teacherClassSubject.findMany({
     where: {
       teacher: { tenantId: req.tenantId },
       ...(classId   ? { classId }   : {}),
-      ...(teacherId ? { teacherId } : {}),
+      ...(effectiveTeacherId ? { teacherId: effectiveTeacherId } : {}),
     },
     include: {
       teacher: { select: { id: true, fullName: true, email: true } },
@@ -209,4 +230,28 @@ export async function listAssignments(req, res) {
   });
 
   res.json({ assignments });
+}
+
+// Teacher portal: the caller's own assignments (classes + subjects by code).
+export async function listMyAssignments(req, res) {
+  const assignments = await prisma.teacherClassSubject.findMany({
+    where: {
+      teacherId: req.user.id,
+      subject: { tenantId: req.tenantId },
+    },
+    include: {
+      class:   { select: { id: true, name: true, code: true } },
+      subject: { select: { id: true, name: true, code: true } },
+    },
+    orderBy: [{ class: { name: 'asc' } }, { subject: { name: 'asc' } }],
+  });
+
+  res.json({
+    assignments: assignments.map((a) => ({
+      id: a.id,
+      accessCode: a.accessCode,
+      class: a.class,
+      subject: a.subject,
+    })),
+  });
 }
