@@ -6,7 +6,7 @@ import { z } from 'zod';
 import prisma from '../config/db.js';
 import { ApiError } from '../utils/ApiError.js';
 import { getStudentBalance } from '../services/fee.service.js';
-import { nextStudentId, deriveClassCode } from '../services/code.service.js';
+import { nextStudentId, peekNextStudentId, deriveClassCode } from '../services/code.service.js';
 
 export const listQuerySchema = z.object({
   search:   z.string().optional(),
@@ -121,7 +121,9 @@ async function findTenantStudent(tenantId, id) {
 }
 
 export async function getNextStudentId(req, res) {
-  const id = await nextStudentId(req.tenantId);
+  // Read-only preview: this endpoint feeds a form field, so it must NOT consume
+  // a sequence number. The real ID is allocated in `create`.
+  const id = await peekNextStudentId(req.tenantId);
   res.json({ admissionNumber: id });
 }
 

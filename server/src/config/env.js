@@ -28,6 +28,7 @@ const schema = z.object({
   SUPABASE_ANON_KEY: z.string().min(1, 'SUPABASE_ANON_KEY is required'),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
   SUPABASE_STORAGE_BUCKET: z.string().default('report-cards'),
+  SUPABASE_AVATARS_BUCKET: z.string().optional().default('avatars'),
 
   EMAIL_PROVIDER: z.enum(['resend', 'smtp']).default('resend'),
   RESEND_API_KEY: z.string().optional().default(''),
@@ -48,6 +49,11 @@ const schema = z.object({
   FLUTTERWAVE_SECRET_KEY: z.string().optional().default(''),
 
   SUBSCRIPTION_GRACE_PERIOD_DAYS: optionalInt(14),
+
+  // Optional AI provider for document import. When unset, the importer falls
+  // back to a deterministic heuristic parser (no AI needed).
+  OPENAI_API_KEY: z.string().optional().default(''),
+  OPENAI_MODEL: z.string().optional().default('gpt-4o-mini'),
 
   SEED_SUPER_ADMIN_EMAIL: z.string().email().optional().default('superadmin@akademia.app'),
   SEED_SUPER_ADMIN_PASSWORD: z.string().optional().default('ChangeMe123!'),

@@ -7,32 +7,11 @@ import Button      from '../../components/ui/Button';
 import DataTable   from '../../components/ui/DataTable';
 import Modal       from '../../components/ui/Modal';
 import Input       from '../../components/ui/Input';
-import { ArrowLeft, School, KeyRound, Users, UserRound, UserPlus } from 'lucide-react';
+import PlanPicker  from '../../components/ui/PlanPicker';
+import { PLAN_LIST, FEATURE_LABELS, planById, detectPlan } from '../../config/plans';
+import { ArrowLeft, School, KeyRound, Users, UserRound, UserPlus, Save } from 'lucide-react';
 
-const FEATURES = [
-  { key: 'students',   label: 'Student Records',     tier: 'basic' },
-  { key: 'grades',     label: 'Grades & Report Cards', tier: 'basic' },
-  { key: 'fees',       label: 'Fee Management',       tier: 'standard' },
-  { key: 'email',      label: 'Email Notifications',  tier: 'standard' },
-  { key: 'attendance', label: 'Attendance Tracking',  tier: 'premium' },
-  { key: 'terms',      label: 'Term Management',      tier: 'premium' },
-  { key: 'subjects',   label: 'Subject Management',   tier: 'premium' },
-];
-
-const TIERS = {
-  basic:    { name: 'Basic',    price: 'GHS 2,800/year' },
-  standard: { name: 'Standard', price: 'GHS 4,800/year' },
-  premium:  { name: 'Premium',  price: 'GHS 8,200/year' },
-};
-
-function detectTier(features) {
-  if (!features) return 'basic';
-  const premiumOnly = ['attendance', 'terms', 'subjects'];
-  const standardOnly = ['fees', 'email'];
-  if (premiumOnly.some((k) => features[k])) return 'premium';
-  if (standardOnly.some((k) => features[k])) return 'standard';
-  return 'basic';
-}
+const FEATURES = Object.keys(FEATURE_LABELS).map((key) => ({ key, label: FEATURE_LABELS[key] }));
 
 export default function TenantDetail() {
   const { id }    = useParams();
@@ -45,6 +24,8 @@ export default function TenantDetail() {
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [adminForm, setAdminForm] = useState({ fullName: '', email: '', password: '', phone: '' });
   const [creatingAdmin, setCreatingAdmin] = useState(false);
+  const [planForm, setPlanForm]   = useState('BASIC');
+  const [savingPlan, setSavingPlan] = useState(false);
 
   useEffect(() => { fetchTenant(); }, [id]);
 
@@ -58,6 +39,7 @@ export default function TenantDetail() {
         status:    t.subscription?.status || 'ACTIVE',
         expiresAt: t.subscription?.expiresAt?.split('T')[0] || '',
       });
+      setPlanForm(t.subscription?.plan || detectPlan(t.subscription?.features || {}));
       const feats = t.subscription?.features || {};
       setFeaturesForm({
         students:   true,
@@ -87,6 +69,19 @@ export default function TenantDetail() {
       toast.error(err.response?.data?.message || 'Update failed');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function savePlan() {
+    setSavingPlan(true);
+    try {
+      await tenantsApi.updatePlan(id, planForm);
+      toast.success('Plan updated');
+      fetchTenant();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not update plan');
+    } finally {
+      setSavingPlan(false);
     }
   }
 
@@ -127,7 +122,7 @@ export default function TenantDetail() {
   const daysRemaining = tenant?.subscription?.expiresAt
     ? Math.ceil((new Date(tenant.subscription.expiresAt) - Date.now()) / 86400000)
     : null;
-  const currentTier = tenant?.subscription?.features ? detectTier(tenant.subscription.features) : 'basic';
+  const currentPlan = planById(tenant?.subscription?.plan || detectPlan(tenant?.subscription?.features || {}));
 
   if (loading) {
     return (
@@ -203,8 +198,25 @@ export default function TenantDetail() {
           </div>
 
           <div className="mb-3 px-3 py-2 bg-slate-50 rounded-lg text-sm">
-            <span className="font-semibold text-slate-700">Plan: {TIERS[currentTier]?.name}</span>
-            <span className="text-slate-500 ml-2">{TIERS[currentTier]?.price}</span>
+            <span className="font-semibold text-slate-700">Plan: {currentPlan.name}</span>
+            <span className="text-slate-500 ml-2">GHS {currentPlan.priceGHS.toLocaleString()}/year</span>
+          </div>
+
+          <div className="mb-5">
+            <label className="label">Subscription Plan</label>
+            <div className="space-y-2 mb-3">
+              <select className="input" value={planForm} onChange={(e) => setPlanForm(e.target.value)}>
+                {PLAN_LIST.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} — GHS {p.priceGHS.toLocaleString()}/year</option>
+                ))}
+              </select>
+            </div>
+            <Button type="button" variant="primary" size="sm" loading={savingPlan} onClick={savePlan}>
+              <Save className="w-3.5 h-3.5" /> Apply Plan
+            </Button>
+            <p className="text-xs text-slate-400 mt-2">
+              Choosing a plan sets the feature access below automatically.
+            </p>
           </div>
 
           <form onSubmit={saveSubscription} className="space-y-3">

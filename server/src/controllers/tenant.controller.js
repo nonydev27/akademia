@@ -7,6 +7,7 @@ import prisma from '../config/db.js';
 import { ApiError } from '../utils/ApiError.js';
 import { createTenantWithAdmin, provisionTenantAdmin } from '../services/tenant.service.js';
 import { invalidateCached } from '../middleware/subscription.middleware.js';
+import { PLAN_LIST, planFeatures, isValidPlan } from '../config/plans.js';
 
 export const createTenantSchema = z.object({
   schoolName: z.string().min(2),
@@ -14,7 +15,14 @@ export const createTenantSchema = z.object({
   adminFullName: z.string().min(2),
   adminEmail: z.string().email(),
   adminPassword: z.string().min(8),
+  adminPhone: z.string().optional(),
+  adminContact: z.string().optional(),
+  plan: z.enum(['BASIC', 'STANDARD', 'PREMIUM']).optional(),
 });
+
+export async function listPlans(req, res) {
+  res.json({ plans: PLAN_LIST });
+}
 
 export async function create(req, res) {
   const result = await createTenantWithAdmin(req.body);
@@ -65,7 +73,7 @@ export const createTenantAdminSchema = z.object({
 });
 
 export async function createTenantAdmin(req, res) {
-  const user = await createTenantAdmin(req.params.id, req.body);
+  const user = await provisionTenantAdmin(req.params.id, req.body);
   res.status(201).json({
     user: {
       id: user.id,
@@ -83,15 +91,39 @@ export const updateFeaturesSchema = z.record(z.string(), z.boolean());
 
 export async function updateFeatures(req, res) {
   invalidateCached(req.params.id);
-  const features = await prisma.subscription.update({
+  const updated = await prisma.subscription.update({
     where: { tenantId: req.params.id },
     data: { features: req.body },
   });
-  res.json({ features });
+  res.json({ features: updated.features, subscription: updated });
+}
+
+export const updatePlanSchema = z.object({
+  plan: z.enum(['BASIC', 'STANDARD', 'PREMIUM']),
+});
+
+/**
+ * Assign a plan to a school. Writes the plan AND resets the feature map to the
+ * plan defaults, so picking a plan always results in a consistent feature set.
+ * Optionally extends the expiry (used when a plan is chosen on signup).
+ */
+export async function updatePlan(req, res) {
+  const { plan } = req.body;
+  if (!isValidPlan(plan)) throw ApiError.badRequest('Unknown plan');
+
+  invalidateCached(req.params.id);
+  const existing = await prisma.subscription.findUnique({ where: { tenantId: req.params.id }});
+  if (!existing) throw ApiError.notFound('No subscription found for this school');
+
+  const subscription = await prisma.subscription.update({
+    where: { tenantId: req.params.id },
+    data: { plan, features: planFeatures(plan) },
+  });
+  res.json({ subscription });
 }
 
 export async function updateSubscription(req, res) {
-  invalidateCached(req.tenantId);
+  invalidateCached(req.params.id);
   const subscription = await prisma.subscription.update({
     where: { tenantId: req.params.id },
     data: req.body,

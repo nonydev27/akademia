@@ -8,7 +8,8 @@ import { termsApi }    from '../../api/terms';
 import Button  from '../../components/ui/Button';
 import Modal   from '../../components/ui/Modal';
 import Tooltip from '../../components/ui/Tooltip';
-import { Save, Lock, AlertTriangle, KeyRound, BookOpen, CheckCircle2 } from 'lucide-react';
+import { Save, Lock, AlertTriangle, KeyRound, BookOpen, CheckCircle2, Sparkles } from 'lucide-react';
+import AiImportModal from '../../components/ui/AiImportModal';
 
 function computeAggregate(ca, midterm, exam) {
   const c = parseFloat(ca), m = parseFloat(midterm), e = parseFloat(exam);
@@ -49,6 +50,7 @@ export default function GradeEntry() {
   const [meta,      setMeta]      = useState(null);
   const [loading,   setLoading]   = useState(false);
   const [saving,    setSaving]    = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [finalizeModal, setFinalizeModal] = useState(false);
   const [finalizing,    setFinalizing]    = useState(false);
 
@@ -227,9 +229,18 @@ export default function GradeEntry() {
             <Button variant="outline" onClick={() => setFinalizeModal(true)}>
               <Lock className="w-4 h-4" /> Finalize Sheet
             </Button>
+            <Button variant="outline" onClick={() => setShowImport(true)}>
+              <Sparkles className="w-4 h-4" /> Import
+            </Button>
           </div>
         )}
       </div>
+
+      <AiImportModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        onImported={() => { setShowImport(false); }}
+      />
 
       {/* Load controls */}
       <div className="card p-5">

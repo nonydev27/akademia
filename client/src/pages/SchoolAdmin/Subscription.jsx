@@ -3,9 +3,9 @@ import toast from 'react-hot-toast';
 import { useAuth }           from '../../context/AuthContext';
 import { subscriptionsApi }  from '../../api/subscriptions';
 import Button from '../../components/ui/Button';
+import PlanPicker from '../../components/ui/PlanPicker';
+import { planById } from '../../config/plans';
 import { KeyRound, CheckCircle2, AlertTriangle, Lock, RefreshCw, CreditCard, Calendar } from 'lucide-react';
-
-const PLAN_AMOUNT = 500; // GHS per year
 
 export default function Subscription() {
   const { user } = useAuth();
@@ -13,14 +13,16 @@ export default function Subscription() {
   const [loading,   setLoading]   = useState(true);
   const [paying,    setPaying]    = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('BASIC');
 
   useEffect(() => { fetchStatus(); }, []);
 
-  // Check for Paystack callback reference in URL
+  // Check for payment callback reference in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('reference') || params.get('trxref');
-    if (ref) verifyPayment(ref);
+    const plan = params.get('plan') || undefined;
+    if (ref) verifyPayment(ref, plan);
   }, []);
 
   async function fetchStatus() {
@@ -28,6 +30,7 @@ export default function Subscription() {
     try {
       const res = await subscriptionsApi.status();
       setSub(res.data);
+      if (res.data.plan) setSelectedPlan(res.data.plan);
     } catch {
       toast.error('Failed to load subscription');
     } finally { setLoading(false); }
@@ -37,30 +40,32 @@ export default function Subscription() {
     if (!user?.email) { toast.error('Email not found'); return; }
     setPaying(true);
     try {
-      const callbackUrl = window.location.href.split('?')[0]; // current page without params
+      const callbackUrl = window.location.href.split('?')[0];
       const res = await subscriptionsApi.renew({
         email: user.email,
         callbackUrl,
+        plan: selectedPlan,
       });
-      // Redirect to Paystack checkout
-      window.location.href = res.data.checkoutUrl;
+
+      const url = res.data.checkoutUrl || '';
+      window.location.href = url;
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not initialize payment');
       setPaying(false);
     }
   }
 
-  async function verifyPayment(reference) {
+  async function verifyPayment(reference, plan) {
     setVerifying(true);
     try {
-      await subscriptionsApi.verify(reference);
-      toast.success('Payment verified — subscription renewed!');
+      await subscriptionsApi.verify(reference, plan);
+      toast.success('Payment verified — subscription updated!');
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
       fetchStatus();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Payment verification failed');
-    } finally { setVerifying(false); }
+    } finally { setVerifying(false); setPaying(false); }
   }
 
   const statusConfig = {
@@ -70,6 +75,7 @@ export default function Subscription() {
   };
   const cfg = statusConfig[sub?.status] || statusConfig.ACTIVE;
   const StatusIcon = cfg.icon;
+  const activePlan = planById(sub?.plan || 'BASIC');
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -102,8 +108,8 @@ export default function Subscription() {
               </div>
               <div>
                 <div className="text-lg font-bold text-slate-900">
-                  Subscription{' '}
-                  <span className={`text-${cfg.color}-600`}>{cfg.label}</span>
+                  {activePlan.name} Plan{' '}
+                  <span className={`text-${cfg.color}-600`}>· {cfg.label}</span>
                 </div>
                 <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
                   <span className="flex items-center gap-1">
@@ -134,37 +140,48 @@ export default function Subscription() {
         </div>
       )}
 
-      {/* Plan details */}
+      {/* Plan selection + payment */}
       <div className="card p-6">
-        <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <CreditCard className="w-5 h-5 text-brand-600" /> Annual Plan
+        <h2 className="font-bold text-slate-800 mb-1 flex items-center gap-2">
+          <CreditCard className="w-5 h-5 text-brand-600" /> Choose your plan
         </h2>
-        <div className="flex items-baseline gap-2 mb-4">
-          <span className="text-4xl font-extrabold text-slate-900">GHS {PLAN_AMOUNT}</span>
+        <p className="text-sm text-slate-500 mb-4">
+          Select the plan that fits your school. Billing is per year.
+        </p>
+
+        <PlanPicker value={selectedPlan} onChange={setSelectedPlan} />
+
+        <div className="flex items-baseline gap-2 mt-5 mb-4">
+          <span className="text-3xl font-extrabold text-slate-900">
+            GHS {planById(selectedPlan).priceGHS.toLocaleString()}
+          </span>
           <span className="text-slate-500">/ year</span>
         </div>
-        <ul className="space-y-2 text-sm text-slate-600 mb-6">
-          {[
-            'Unlimited students and teachers',
-            'Grade entry with subject PIN security',
-            'Attendance tracking per subject',
-            'Automated report card generation',
-            'Fee management and reminders',
-            'Communication via email and SMS',
-          ].map((item) => (
-            <li key={item} className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-              {item}
-            </li>
-          ))}
-        </ul>
+
         <Button variant="primary" loading={paying} onClick={handleRenew} className="w-full">
           <CreditCard className="w-4 h-4" />
-          {sub?.status === 'ACTIVE' ? 'Renew / Extend Subscription' : 'Pay Now — GHS 500'}
+          {sub?.status === 'ACTIVE'
+            ? `Renew / Switch to ${planById(selectedPlan).name}`
+            : `Pay Now — GHS ${planById(selectedPlan).priceGHS.toLocaleString()}`}
         </Button>
         <p className="text-xs text-slate-400 text-center mt-3">
-          Secure payment via Paystack. You will be redirected to complete payment.
+          Secure payment via Paystack / Flutterwave. You'll be redirected to complete payment.
         </p>
+      </div>
+
+      {/* What's included */}
+      <div className="card p-6">
+        <h2 className="font-bold text-slate-800 mb-4">What's included in {activePlan.name}</h2>
+        <div className="grid sm:grid-cols-2 gap-2">
+          {Object.entries(activePlan.features).map(([key, on]) => (
+            <div key={key} className={`flex items-center gap-2 text-sm ${on ? 'text-slate-700' : 'text-slate-400'}`}>
+              {on
+                ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                : <Lock className="w-4 h-4 flex-shrink-0" />}
+              {key}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Last payment */}

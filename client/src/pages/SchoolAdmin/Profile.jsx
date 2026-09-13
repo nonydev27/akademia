@@ -5,7 +5,7 @@ import { supabase }   from '../../lib/supabaseClient';
 import { useAuth }    from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 import Input  from '../../components/ui/Input';
-import { UserCircle, Mail, Phone, KeyRound, Save, ShieldCheck, Camera, X } from 'lucide-react';
+import { UserCircle, Mail, Phone, KeyRound, Save, ShieldCheck, Camera, X, Link as LinkIcon } from 'lucide-react';
 
 export default function Profile() {
   const { user, refreshProfile } = useAuth();
@@ -16,6 +16,7 @@ export default function Profile() {
   const [saving,   setSaving]   = useState(false);
   const [uploading, setUploading] = useState(false);
   const [preview,  setPreview]  = useState(null);
+  const [imageUrl, setImageUrl] = useState('');
   const fileRef    = useRef(null);
 
   const [pwForm,   setPwForm]   = useState({ newPassword: '', confirm: '' });
@@ -28,6 +29,7 @@ export default function Profile() {
         const u = res.data.user;
         setProfile(u);
         setForm({ fullName: u.fullName || '', phone: u.phone || '', image: u.image || '' });
+        setImageUrl(u.image?.startsWith('http') ? u.image : '');
         if (u.image) setPreview(u.image);
       } catch {
         toast.error('Failed to load profile');
@@ -76,7 +78,18 @@ export default function Profile() {
   function handleRemoveImage() {
     setForm((f) => ({ ...f, image: '' }));
     setPreview(null);
+    setImageUrl('');
     handleSave({ preventDefault: () => {} });
+  }
+
+  // Apply a picture provided as a link (http(s) URL) — no upload needed.
+  function applyImageUrl() {
+    const url = imageUrl.trim();
+    if (!url) { toast.error('Paste an image link first'); return; }
+    if (!/^https?:\/\//i.test(url)) { toast.error('Link must start with http:// or https://'); return; }
+    setForm((f) => ({ ...f, image: url }));
+    setPreview(url);
+    toast.success('Picture link applied — remember to Save Changes');
   }
 
   async function handlePasswordChange(e) {
@@ -181,6 +194,19 @@ export default function Profile() {
             </label>
             <Input type="tel" placeholder="e.g. 0244123456" value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          </div>
+          <div>
+            <label className="label flex items-center gap-1.5">
+              <LinkIcon className="w-3.5 h-3.5 text-slate-400" /> Profile Picture Link
+            </label>
+            <div className="flex gap-2">
+              <input className="input" type="url" placeholder="https://example.com/photo.jpg"
+                value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+              <Button type="button" variant="outline" onClick={applyImageUrl}>Use link</Button>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Paste a direct image URL, or click the camera icon above to upload from your device.
+            </p>
           </div>
           <Button type="submit" variant="primary" loading={saving}>
             <Save className="w-4 h-4" /> Save Changes

@@ -77,6 +77,32 @@ export async function nextStudentId(tenantId) {
   `;
   const row = rows[0];
   if (!row) throw new Error("Tenant not found while generating student ID");
-  const padded = String(row.studentSeq).padStart(3, "0");
-  return `${row.code}-${padded}`;
+  return formatStudentId(row.code, row.studentSeq);
+}
+
+/**
+ * Preview the Student ID that the NEXT admission would receive — WITHOUT
+ * consuming it.
+ *
+ * Read-only on purpose. Use this for any UI that merely *displays* the upcoming
+ * ID (e.g. the Add Student form). Reserving here would burn a number every time
+ * the form is opened, so abandoned forms would leave gaps in the sequence
+ * (001, 002, 005…) and the counter would drift from the real student count.
+ *
+ * The returned value is advisory: a concurrent admission may take it first, so
+ * it must never be sent to the create endpoint as a client-supplied ID. `create`
+ * calls `nextStudentId()` to allocate the real one.
+ */
+export async function peekNextStudentId(tenantId) {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { code: true, studentSeq: true },
+  });
+  if (!tenant) throw new Error("Tenant not found while generating student ID");
+  return formatStudentId(tenant.code, tenant.studentSeq + 1);
+}
+
+/** "VIS" + 1 -> "VIS-001" */
+function formatStudentId(code, seq) {
+  return `${code}-${String(seq).padStart(3, "0")}`;
 }

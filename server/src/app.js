@@ -23,6 +23,7 @@ import classRoutes        from './routes/class.routes.js';
 import gradeBandRoutes   from './routes/gradeBands.routes.js';
 import termRoutes         from './routes/term.routes.js';
 import profileRoutes      from './routes/profile.routes.js';
+import importRoutes       from './routes/import.routes.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 
 const app = express();
@@ -33,7 +34,12 @@ app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 // Paystack webhook needs raw body for signature verification
 app.use('/api/v1/subscriptions/webhook', express.raw({ type: '*/*' }));
 
-app.use(express.json());
+// The AI student importer posts the whole document as a base64 data URL in JSON.
+// Base64 inflates by ~33%, and the client allows files up to 10 MB, so the body
+// can reach ~13.5 MB. Express defaults to 100 kb, which would reject it outright,
+// so raise the cap past the largest possible payload. (This only bounds the
+// parse; it is not a substitute for per-route size limits.)
+app.use(express.json({ limit: '20mb' }));
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
@@ -53,6 +59,7 @@ app.use('/api/v1/classes',        classRoutes);
 app.use('/api/v1/grade-bands',    gradeBandRoutes);
 app.use('/api/v1/terms',          termRoutes);
 app.use('/api/v1/profile',        profileRoutes);
+app.use('/api/v1/import',         importRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 app.use(errorMiddleware);

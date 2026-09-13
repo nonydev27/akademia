@@ -5,7 +5,7 @@
 import crypto from 'node:crypto';
 import { env } from '../config/env.js';
 
-async function initializePaystack({ email, amount, reference, callbackUrl }) {
+async function initializePaystack({ email, amount, reference, callbackUrl, metadata }) {
   const res = await fetch('https://api.paystack.co/transaction/initialize', {
     method: 'POST',
     headers: {
@@ -17,6 +17,7 @@ async function initializePaystack({ email, amount, reference, callbackUrl }) {
       amount: Math.round(amount * 100), // Paystack expects kobo/pesewas
       reference,
       callback_url: callbackUrl,
+      metadata: metadata || {},
     }),
   });
   const body = await res.json();
@@ -38,10 +39,11 @@ async function verifyPaystack(reference) {
     success: body.data?.status === 'success',
     amount: (body.data?.amount || 0) / 100,
     reference: body.data?.reference,
+    plan: body.data?.metadata?.plan,
   };
 }
 
-async function initializeFlutterwave({ email, amount, reference, callbackUrl }) {
+async function initializeFlutterwave({ email, amount, reference, callbackUrl, metadata }) {
   const res = await fetch('https://api.flutterwave.com/v3/payments', {
     method: 'POST',
     headers: {
@@ -54,6 +56,7 @@ async function initializeFlutterwave({ email, amount, reference, callbackUrl }) 
       currency: 'GHS',
       redirect_url: callbackUrl,
       customer: { email },
+      meta: metadata || {},
     }),
   });
   const body = await res.json();
@@ -76,18 +79,49 @@ async function verifyFlutterwave(reference) {
     success: body.data?.status === 'successful',
     amount: body.data?.amount || 0,
     reference: body.data?.tx_ref,
+    plan: body.data?.meta?.plan,
   };
 }
 
-export async function initializeRenewalPayment({ tenantId, amount, email, callbackUrl }) {
-  const reference = `akademia_${tenantId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-  if (env.PAYMENT_PROVIDER === 'flutterwave') {
-    return initializeFlutterwave({ email, amount, reference, callbackUrl });
+/**
+ * True when no live payment provider is configured. In this mode renewal is
+ * simulated locally so the whole subscription flow remains usable in
+ * development and on free tiers without a Paystack/Flutterwave account. Set a
+ * real secret key in .env to switch to live payments automatically.
+ */
+export function isDemoPaymentMode() {
+  if (env.PAYMENT_PROVIDER === 'flutterwave') return !env.FLUTTERWAVE_SECRET_KEY;
+  return !env.PAYSTACK_SECRET_KEY;
+}
+
+function makeReference(tenantId) {
+  return `akademia_${tenantId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+}
+
+export async function initializeRenewalPayment({ tenantId, amount, email, callbackUrl, metadata }) {
+  const reference = makeReference(tenantId);
+
+  if (isDemoPaymentMode()) {
+    // No provider keys — return a self-contained checkout URL that points back
+    // to the client so it can immediately verify and activate.
+    const url = new URL(callbackUrl);
+    url.searchParams.set('reference', reference);
+    url.searchParams.set('demo', '1');
+    return { checkoutUrl: url.toString(), reference, demo: true };
   }
-  return initializePaystack({ email, amount, reference, callbackUrl });
+
+  if (env.PAYMENT_PROVIDER === 'flutterwave') {
+    return initializeFlutterwave({ email, amount, reference, callbackUrl, metadata });
+  }
+  return initializePaystack({ email, amount, reference, callbackUrl, metadata });
 }
 
 export async function verifyPayment(reference) {
+  if (isDemoPaymentMode()) {
+    // Nothing to verify against a provider; treat the local reference as paid.
+    return { success: true, amount: null, reference, plan: null, demo: true };
+  }
+
   if (env.PAYMENT_PROVIDER === 'flutterwave') {
     return verifyFlutterwave(reference);
   }

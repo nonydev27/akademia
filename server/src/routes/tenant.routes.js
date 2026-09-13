@@ -13,6 +13,7 @@ const router = Router();
 router.use(requireAuth, requireRole('SUPER_ADMIN'));
 
 router.get('/', controller.list);
+router.get('/plans', controller.listPlans);
 router.post('/', validate({ body: controller.createTenantSchema }), controller.create);
 router.get('/:id', controller.getById);
 router.patch('/:id', validate({ body: controller.updateTenantSchema }), controller.update);
@@ -21,7 +22,8 @@ router.patch(
   validate({ body: controller.updateSubscriptionSchema }),
   controller.updateSubscription
 );
+router.patch('/:id/plan', validate({ body: controller.updatePlanSchema }), controller.updatePlan);
 router.patch('/:id/features', validate({ body: controller.updateFeaturesSchema }), controller.updateFeatures);
-router.post('/:id/admin', requireRole('SUPER_ADMIN'), validate({ body: controller.createTenantAdminSchema }), controller.createTenantAdmin);
+router.post('/:id/admin', validate({ body: controller.createTenantAdminSchema }), controller.createTenantAdmin);
 
 export default router;

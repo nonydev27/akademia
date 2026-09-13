@@ -8,6 +8,8 @@ import StatusBadge   from '../../components/ui/StatusBadge';
 import Modal         from '../../components/ui/Modal';
 import Button        from '../../components/ui/Button';
 import Input         from '../../components/ui/Input';
+import PlanPicker    from '../../components/ui/PlanPicker';
+import { planById }  from '../../config/plans';
 import { School, CheckCircle2, AlertTriangle, Lock, ArrowRight, Plus } from 'lucide-react';
 
 export default function TenantsDashboard() {
@@ -19,7 +21,7 @@ export default function TenantsDashboard() {
   const [form, setForm]         = useState({
     schoolName: '', schoolLevel: 'JHS',
     adminFullName: '', adminEmail: '', adminPassword: '',
-    adminPhone: '', adminContact: '',
+    adminPhone: '', adminContact: '', plan: 'BASIC',
   });
   const [saving, setSaving]     = useState(false);
 
@@ -55,7 +57,7 @@ export default function TenantsDashboard() {
       await tenantsApi.create(form);
       toast.success(`${form.schoolName} added successfully!`);
       setShowAdd(false);
-      setForm({ schoolName: '', schoolLevel: 'JHS', adminFullName: '', adminEmail: '', adminPassword: '', adminPhone: '', adminContact: '' });
+      setForm({ schoolName: '', schoolLevel: 'JHS', adminFullName: '', adminEmail: '', adminPassword: '', adminPhone: '', adminContact: '', plan: 'BASIC' });
       fetchTenants();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to add school');
@@ -68,8 +70,13 @@ export default function TenantsDashboard() {
     { key: 'name',  label: 'School Name' },
     { key: 'schoolLevel', label: 'Level',
       render: (v) => <StatusBadge status={v} /> },
-    { key: 'subscription', label: 'Subscription',
-      render: (v) => <StatusBadge status={v?.status || 'EXPIRED_LOCKED'} /> },
+    { key: 'subscription', label: 'Plan',
+      render: (v) => (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="font-semibold text-slate-700">{planById(v?.plan).name}</span>
+          <StatusBadge status={v?.status || 'EXPIRED_LOCKED'} />
+        </span>
+      ) },
     { key: 'subscription', label: 'Expires',
       render: (v) => v?.expiresAt
         ? new Date(v.expiresAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
@@ -163,6 +170,11 @@ export default function TenantsDashboard() {
                 onChange={(e) => setForm({ ...form, adminPassword: e.target.value })}
                 placeholder="Min 8 characters" required />
             </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-sm font-semibold text-slate-600 mb-3">Subscription Plan</p>
+            <PlanPicker value={form.plan} onChange={(plan) => setForm({ ...form, plan })} />
           </div>
 
           <div className="flex gap-3 pt-2">

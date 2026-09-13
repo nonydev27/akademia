@@ -6,12 +6,12 @@ import { Router } from 'express';
 import { requireAuth }               from '../middleware/auth.middleware.js';
 import { attachTenant }              from '../middleware/tenant.middleware.js';
 import { requireRole }               from '../middleware/role.middleware.js';
-import { requireActiveSubscription } from '../middleware/subscription.middleware.js';
+import { requireActiveSubscription, requireFeature } from '../middleware/subscription.middleware.js';
 import * as controller               from '../controllers/reportcard.controller.js';
 
 const router = Router();
 
-router.use(requireAuth, attachTenant, requireActiveSubscription);
+router.use(requireAuth, attachTenant, requireActiveSubscription, requireFeature('grades'));
 
 // Admin: list all report cards for a term (optionally filtered by status)
 router.get('/', requireRole('SCHOOL_ADMIN'), controller.listForTerm);

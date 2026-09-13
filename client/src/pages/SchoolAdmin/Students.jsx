@@ -7,9 +7,11 @@ import Modal       from '../../components/ui/Modal';
 import Button      from '../../components/ui/Button';
 import Input       from '../../components/ui/Input';
 import StatusBadge from '../../components/ui/StatusBadge';
+import AiImportModal from '../../components/ui/AiImportModal';
+import { useAuth }   from '../../context/AuthContext';
 import {
   Plus, Search, X, Users, UserCircle,
-  GraduationCap, Trophy, IdCard, Eye, ChevronRight, ChevronLeft, Pencil, Camera,
+  GraduationCap, Trophy, IdCard, Eye, ChevronRight, ChevronLeft, Pencil, Camera, Sparkles,
 } from 'lucide-react';
 
 const NATIONALITIES = [
@@ -62,6 +64,7 @@ export default function Students() {
     })();
   }, []);
 
+  const [showImport,     setShowImport]     = useState(false);
   const [selected,       setSelected]       = useState(null);
   const [detailLoading,  setDetailLoading]  = useState(false);
   const [editingField,   setEditingField]   = useState(null);
@@ -112,8 +115,10 @@ export default function Students() {
   async function handleSave() {
     setSaving(true);
     try {
+      // Do NOT send the previewed `admissionNumber`: it was only a peek and may
+      // have been taken by a concurrent admission. Omitting it lets the server
+      // allocate the real ID atomically.
       await studentsApi.create({
-        admissionNumber,
         ...form,
         dateOfBirth: form.dateOfBirth || undefined,
         email:       form.email || undefined,
@@ -170,8 +175,19 @@ export default function Students() {
           <h1 className="page-title">Students</h1>
           <p className="page-subtitle">{total} student{total !== 1 ? 's' : ''} enrolled</p>
         </div>
-        <Button variant="primary" onClick={openAdd}><Plus className="w-4 h-4" /> Add Student</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowImport(true)}>
+            <Sparkles className="w-4 h-4" /> Import with AI
+          </Button>
+          <Button variant="primary" onClick={openAdd}><Plus className="w-4 h-4" /> Add Student</Button>
+        </div>
       </div>
+
+      <AiImportModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        onImported={fetchStudents}
+      />
 
       <div className="card p-4">
         <div className="relative max-w-sm">
@@ -459,7 +475,7 @@ export default function Students() {
                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{section}</h3>
                       <div className="card p-3 space-y-1">
                         {fields.map(({ key, label, type }) => (
-                          <div key={key} className="flex items-center gap-2 py-1">
+                          <div key={key} className="group flex items-center gap-2 py-1">
                             <span className="text-xs text-slate-500 w-28 flex-shrink-0">{label}</span>
                             {editingField === key ? (
                               <div className="flex items-center gap-1 flex-1">

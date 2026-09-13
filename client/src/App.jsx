@@ -8,6 +8,7 @@ import Login             from './pages/Auth/Login';
 // Super Admin
 import TenantsDashboard  from './pages/SuperAdmin/TenantsDashboard';
 import TenantDetail      from './pages/SuperAdmin/TenantDetail';
+import SuperAdminProfile from './pages/SchoolAdmin/Profile';
 
 // School Admin
 import AdminDashboard    from './pages/SchoolAdmin/AdminDashboard';
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/super-admin"             element={<TenantsDashboard />} />
           <Route path="/super-admin/schools"     element={<TenantsDashboard />} />
           <Route path="/super-admin/schools/:id" element={<TenantDetail />} />
+          <Route path="/super-admin/profile"     element={<SuperAdminProfile />} />
         </Route>
       </Route>
 

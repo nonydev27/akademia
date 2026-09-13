@@ -6,10 +6,11 @@ import prisma from '../config/db.js';
 import { supabaseAdmin } from '../config/supabase.js';
 import { ApiError } from '../utils/ApiError.js';
 import { uniqueSchoolCode } from './code.service.js';
+import { planFeatures, isValidPlan } from '../config/plans.js';
 
 export async function createTenantWithAdmin({
   schoolName, schoolLevel, adminFullName, adminEmail, adminPassword, adminPhone, adminContact,
-  schoolCode,
+  schoolCode, plan = 'BASIC',
 }) {
   const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
   if (existing) throw ApiError.badRequest('A user with that email already exists');
@@ -17,6 +18,7 @@ export async function createTenantWithAdmin({
   // Human-facing school code (initials). Unique across the platform.
   const code = await uniqueSchoolCode(schoolCode, schoolName);
 
+  const chosenPlan = isValidPlan(plan) ? plan : 'BASIC';
   const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
 
   const { data: authUser, error } = await supabaseAdmin.auth.admin.createUser({
@@ -42,7 +44,13 @@ export async function createTenantWithAdmin({
         },
       });
       const subscription = await tx.subscription.create({
-        data: { tenantId: tenant.id, status: 'ACTIVE', expiresAt },
+        data: {
+          tenantId: tenant.id,
+          status: 'ACTIVE',
+          plan: chosenPlan,
+          expiresAt,
+          features: planFeatures(chosenPlan),
+        },
       });
       return { tenant, admin, subscription };
     });

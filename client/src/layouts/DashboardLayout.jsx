@@ -15,8 +15,9 @@ import {
 const ICON_SIZE = 'w-[18px] h-[18px]';
 
 const NAV_SUPER_ADMIN = [
-  { to: '/super-admin',         icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
-  { to: '/super-admin/schools', icon: <School className={ICON_SIZE} />,          label: 'Schools' },
+  { to: '/super-admin',         icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/super-admin/schools', icon: School,          label: 'Schools' },
+  { to: '/super-admin/profile', icon: UserCircle,      label: 'My Profile' },
 ];
 
 const FEATURE_NAV_MAP = {
@@ -35,27 +36,27 @@ const FEATURE_NAV_MAP = {
 };
 
 const NAV_SCHOOL_ADMIN = [
-  { to: '/admin',                icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
-  { to: '/admin/students',       icon: <Users className={ICON_SIZE} />,           label: 'Students' },
-  { to: '/admin/staff',          icon: <Users2 className={ICON_SIZE} />,          label: 'Staff' },
-  { to: '/admin/subjects',       icon: <BookOpen className={ICON_SIZE} />,        label: 'Subjects' },
-  { to: '/admin/classes',        icon: <Layers className={ICON_SIZE} />,          label: 'Classes' },
-  { to: '/admin/attendance',     icon: <CheckSquare className={ICON_SIZE} />,     label: 'Attendance' },
-  { to: '/admin/fees',           icon: <Wallet className={ICON_SIZE} />,          label: 'Fees' },
-  { to: '/admin/grades',         icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grades' },
-  { to: '/admin/results',        icon: <ClipboardCheck className={ICON_SIZE} />,  label: 'Publish Results' },
-  { to: '/admin/terms',          icon: <Calendar className={ICON_SIZE} />,        label: 'Terms' },
-  { to: '/admin/communications', icon: <Send className={ICON_SIZE} />,            label: 'Communications' },
-  { to: '/admin/subscription',   icon: <KeyRound className={ICON_SIZE} />,        label: 'Subscription' },
-  { to: '/admin/profile',        icon: <UserCircle className={ICON_SIZE} />,      label: 'My Profile' },
+  { to: '/admin',                icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/admin/students',       icon: Users,           label: 'Students' },
+  { to: '/admin/staff',          icon: Users2,          label: 'Staff' },
+  { to: '/admin/subjects',       icon: BookOpen,        label: 'Subjects' },
+  { to: '/admin/classes',        icon: Layers,          label: 'Classes' },
+  { to: '/admin/attendance',     icon: CheckSquare,     label: 'Attendance' },
+  { to: '/admin/fees',           icon: Wallet,          label: 'Fees' },
+  { to: '/admin/grades',         icon: NotebookPen,     label: 'Grades' },
+  { to: '/admin/results',        icon: ClipboardCheck,  label: 'Publish Results' },
+  { to: '/admin/terms',          icon: Calendar,        label: 'Terms' },
+  { to: '/admin/communications', icon: Send,            label: 'Communications' },
+  { to: '/admin/subscription',   icon: KeyRound,        label: 'Subscription' },
+  { to: '/admin/profile',        icon: UserCircle,      label: 'My Profile' },
 ];
 
 const NAV_STAFF = [
-  { to: '/staff',               icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
-  { to: '/staff/attendance',    icon: <CheckSquare className={ICON_SIZE} />,     label: 'Mark Attendance' },
-  { to: '/staff/grades',        icon: <NotebookPen className={ICON_SIZE} />,     label: 'Grade Entry' },
-  { to: '/staff/subjects',      icon: <BookOpen className={ICON_SIZE} />,        label: 'My Subjects' },
-  { to: '/staff/profile',       icon: <UserCircle className={ICON_SIZE} />,      label: 'My Profile' },
+  { to: '/staff',               icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/staff/attendance',    icon: CheckSquare,     label: 'Mark Attendance' },
+  { to: '/staff/grades',        icon: NotebookPen,     label: 'Grade Entry' },
+  { to: '/staff/subjects',      icon: BookOpen,        label: 'My Subjects' },
+  { to: '/staff/profile',       icon: UserCircle,      label: 'My Profile' },
 ];
 
 function getNav(role, features = {}) {
@@ -137,7 +138,7 @@ export default function DashboardLayout() {
                 onClick={(e) => { if (item.locked) { e.preventDefault(); toast.error(`${item.label} is not included in your current subscription. Contact the platform administrator.`); } else setMobile(false); }}
               >
                 <span className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                  {Icon}
+                  <Icon className={ICON_SIZE} />
                 </span>
                 {!collapsed && <span className="animate-fade-in truncate">{item.label}</span>}
               </NavLink>

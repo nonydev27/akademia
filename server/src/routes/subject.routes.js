@@ -8,13 +8,13 @@ import { Router } from 'express';
 import { requireAuth }               from '../middleware/auth.middleware.js';
 import { attachTenant }              from '../middleware/tenant.middleware.js';
 import { requireRole }               from '../middleware/role.middleware.js';
-import { requireActiveSubscription } from '../middleware/subscription.middleware.js';
+import { requireActiveSubscription, requireFeature } from '../middleware/subscription.middleware.js';
 import { validate }                  from '../middleware/validate.js';
 import * as controller               from '../controllers/subject.controller.js';
 
 const router = Router();
 
-router.use(requireAuth, attachTenant, requireActiveSubscription);
+router.use(requireAuth, attachTenant, requireActiveSubscription, requireFeature('subjects'));
 
 // Static routes FIRST
 router.get('/',    requireRole('SCHOOL_ADMIN'), controller.listSubjects);

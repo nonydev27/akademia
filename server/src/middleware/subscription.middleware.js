@@ -11,6 +11,7 @@
 import prisma from '../config/db.js';
 import { ApiError } from '../utils/ApiError.js';
 import { env } from '../config/env.js';
+import { effectiveFeatures } from '../config/plans.js';
 
 const SUBSCRIPTION_CACHE = new Map();
 const CACHE_TTL_MS = 30000;
@@ -49,7 +50,7 @@ export async function requireActiveSubscription(req, res, next) {
   const now = new Date();
 
   if (subscription.status === 'ACTIVE' && subscription.expiresAt > now) {
-    req.subscriptionFeatures = subscription.features || {};
+    req.subscriptionFeatures = effectiveFeatures(subscription);
     return next();
   }
 
@@ -76,7 +77,7 @@ export async function requireActiveSubscription(req, res, next) {
       const updated = await prisma.subscription.findUnique({ where: { tenantId } });
       if (updated) setCached(tenantId, updated);
     }
-    req.subscriptionFeatures = (fresh || subscription).features || {};
+    req.subscriptionFeatures = effectiveFeatures(fresh || subscription);
     return next();
   }
 
@@ -92,9 +93,17 @@ export async function requireActiveSubscription(req, res, next) {
 }
 
 export function requireFeature(feature) {
-  return (req, res, next) => {
-    const features = req.subscriptionFeatures || {};
-    if (features[feature] !== false) return next();
+  return async (req, res, next) => {
+    // Features are normally attached by requireActiveSubscription. When a route
+    // uses requireFeature without it (e.g. the communications log), load the
+    // subscription here so the gate is still accurate.
+    let features = req.subscriptionFeatures;
+    if (!features) {
+      const sub = await prisma.subscription.findUnique({ where: { tenantId: req.tenantId }});
+      features = sub ? effectiveFeatures(sub) : {};
+      req.subscriptionFeatures = features;
+    }
+    if (features[feature] === true) return next();
     throw ApiError.forbidden(`This school's subscription does not include access to ${feature}. Contact the platform administrator.`);
   };
 }

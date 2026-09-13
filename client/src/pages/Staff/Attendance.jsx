@@ -5,7 +5,8 @@ import { attendanceApi } from '../../api/attendance';
 import { subjectsApi }   from '../../api/subjects';
 import { staffApi }      from '../../api/staff';
 import Button from '../../components/ui/Button';
-import { KeyRound, CheckCircle2, UserCheck, UserX, Save, CalendarDays } from 'lucide-react';
+import { KeyRound, CheckCircle2, UserCheck, UserX, Save, CalendarDays, Sparkles } from 'lucide-react';
+import AiImportModal from '../../components/ui/AiImportModal';
 
 export default function StaffAttendance() {
   // PIN gate
@@ -149,11 +150,22 @@ export default function StaffAttendance() {
           </div>
         </div>
         {roster.length > 0 && (
-          <Button variant="primary" loading={saving} onClick={handleSubmit}>
-            <Save className="w-4 h-4" /> Submit Attendance
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="primary" loading={saving} onClick={handleSubmit}>
+              <Save className="w-4 h-4" /> Submit Attendance
+            </Button>
+            <Button variant="outline" onClick={() => setShowImport(true)}>
+              <Sparkles className="w-4 h-4" /> Import
+            </Button>
+          </div>
         )}
       </div>
+
+      <AiImportModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        onImported={() => { setShowImport(false); }}
+      />
 
       {/* Load controls */}
       <div className="card p-5">

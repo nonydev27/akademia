@@ -114,8 +114,7 @@ export default function Login() {
             Run your whole school<br />from one clean system.
           </h1>
           <p className="text-slate-400 text-base mb-10">
-            Attendance, fees, grading, and result publishing for Primary, JHS and SHS —
-            multi-tenant, subscription-licensed, and built around a strict fee-before-results rule.
+            Attendance, fees, grading, and result publishing for Primary, JHS and SHS.
           </p>
 
           <div className="space-y-5">

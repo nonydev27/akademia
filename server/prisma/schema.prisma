@@ -28,6 +28,12 @@ enum SubscriptionStatus {
   EXPIRED_LOCKED
 }
 
+enum SubscriptionPlan {
+  BASIC
+  STANDARD
+  PREMIUM
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -81,6 +87,7 @@ model Subscription {
   tenant          Tenant             @relation(fields: [tenantId], references: [id])
   tenantId        String             @unique
   status          SubscriptionStatus @default(ACTIVE)
+  plan            SubscriptionPlan   @default(BASIC)
   expiresAt       DateTime
   graceEndsAt     DateTime?
   lastPaymentRef  String?

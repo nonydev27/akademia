@@ -10,7 +10,9 @@ import {
   ShieldOff,
   RefreshCw,
   Layers,
+  Sparkles,
 } from "lucide-react";
+import AiImportModal from "../../components/ui/AiImportModal";
 
 /**
  * Teacher portal: view the subjects you are assigned to, and set or reset the
@@ -20,10 +22,11 @@ import {
 export default function MySubjects() {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pinFor, setPinFor] = useState(null); // subject being edited
+  const [pinFor, setPinFor] = useState(null);
   const [pin, setPin] = useState("");
   const [confirm, setConfirm] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const fetchMine = useCallback(async () => {
     setLoading(true);
@@ -86,7 +89,16 @@ export default function MySubjects() {
         <Button variant="outline" onClick={fetchMine} loading={loading}>
           <RefreshCw className="w-4 h-4" /> Refresh
         </Button>
+        <Button variant="outline" onClick={() => setShowImport(true)}>
+          <Sparkles className="w-4 h-4" /> Import
+        </Button>
       </div>
+
+      <AiImportModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        onImported={() => { setShowImport(false); fetchMine(); }}
+      />
 
       {/* Explainer */}
       <div className="flex gap-3 p-4 bg-brand-50 rounded-2xl border-brand-100">

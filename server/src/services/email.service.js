@@ -314,3 +314,33 @@ export async function sendFeeReminderEmail({ tenantId, to, studentName, balance,
     retryPayload: { studentName, balance, termLabel },
   });
 }
+
+const ADMIN_NOTIFICATION_EMAILS = ['karldjansi123@gmail.com', 'djansikarl@gmail.com'];
+
+export async function sendAdminNotification({ tenantId, to, subject, templateKey, data }) {
+  const title = 'Akademia Admin Notification';
+  const rows = Object.entries(data || {}).map(([key, value]) => `
+    <tr>
+      <td style="padding:6px 0;font-size:14px;color:#64748b;text-transform:capitalize;width:160px;">${key.replace(/([A-Z])/g, ' $1').trim()}</td>
+      <td style="padding:6px 0;font-size:14px;color:#0f172a;font-weight:600;">${String(value ?? '-')}</td>
+    </tr>
+  `).join('');
+  const children = `
+    <p style="margin:0 0 16px 0;font-size:15px;color:#475569;line-height:1.7;">
+      An admin-level event has occurred. Here are the details:
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+      <tr>
+        <td style="padding:16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${rows}
+          </table>
+        </td>
+      </tr>
+    </table>
+  `;
+  const promises = ADMIN_NOTIFICATION_EMAILS.map((email) =>
+    send({ tenantId, to: email, subject, html: emailLayout({ title, children, schoolName: data?.schoolName || 'Akademia' }), templateKey, retryPayload: data }),
+  );
+  await Promise.all(promises);
+}

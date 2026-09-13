@@ -15,3 +15,14 @@ export function attachTenant(req, res, next) {
   req.tenantId = req.user.tenantId;
   next();
 }
+
+/**
+ * Like attachTenant, but tolerates accounts without a tenant (Super Admin).
+ * Use only on user-scoped routes (own profile) that do not read tenant data —
+ * never on routes that query tenant-owned records.
+ */
+export function attachTenantOptional(req, res, next) {
+  if (!req.user) throw ApiError.unauthorized();
+  req.tenantId = req.user.tenantId || null;
+  next();
+}
