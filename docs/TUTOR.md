@@ -1804,9 +1804,49 @@ just edit `schema.prisma` — the database on Supabase still has the old
 structure. A migration is a SQL file that describes *how to change* the
 existing database to match the new schema.
 
-Running `npx prisma migrate dev` generates a new SQL file and runs it
-against the database. The `migrations/` folder is the history of all
-such changes — never delete these files.
+### Development: `prisma db push` (recommended)
+
+During development, the simplest approach is:
+
+```bash
+npx prisma db push
+```
+
+This reads `schema.prisma` and pushes the schema directly to the database.
+It creates or updates tables automatically. No migration files are generated.
+
+This works because the server connects via Supabase's connection pooler
+(port 6543), which `prisma migrate dev` cannot reach. The CLI uses the
+direct connection URL (`DIRECT_URL`, port 5432) which may be blocked by
+Supabase's network rules during development.
+
+### Production: `prisma migrate deploy` (versioned migrations)
+
+For production deployments where you want versioned, reviewable migration
+files:
+
+1. **Generate migrations** (requires direct DB access on port 5432):
+   ```bash
+   npx prisma migrate dev --name <description>
+   ```
+   This creates a new SQL file in `prisma/migrations/` and applies it.
+
+2. **Deploy migrations** (works on any environment with DB access):
+   ```bash
+   npx prisma migrate deploy
+   ```
+   This applies any unapplied migration files in order.
+
+3. **Rollback** (if needed):
+   Edit the migration file to reverse changes, or create a new migration
+   that drops the unwanted changes.
+
+> **Key difference:** `db push` is instant and requires no migration history.
+> `migrate dev/deploy` creates a tracked history of every schema change,
+> which is essential for team collaboration and production rollbacks.
+
+The `migrations/` folder is the history of all such changes — never delete
+these files once created.
 
 ---
 

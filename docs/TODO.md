@@ -105,12 +105,14 @@ npm install
 ### 2c. Run database migrations
 
 ```bash
-npx prisma migrate dev --name init
+npx prisma db push
 ```
 
-This creates all tables in your Supabase database.
+This pushes the schema from `server/prisma/schema.prisma` directly to your Supabase database, creating or updating all tables. This is the recommended way to set up the database during development and deployment.
 
 > If you see a connection error, double-check your `DATABASE_URL` in `.env`.
+
+> **For production with versioned migrations:** Generate migration files with `npx prisma migrate dev` when your database is directly accessible (port 5432, not the Supabase pooler). Then deploy with `npx prisma migrate deploy`. See `docs/TUTOR.md` for details.
 
 ### 2d. Generate Prisma client
 
@@ -272,7 +274,8 @@ The Tauri app only talks to your deployed API server. Keep secrets server-side o
 - Add `?pgbouncer=true&connection_limit=1` to the URI when using Supabase's connection pooler.
 
 **Prisma migration fails**
-- Run `npx prisma db push` instead of `migrate dev` for prototyping (no migration files generated).
+- Use `npx prisma db push` which pushes the schema directly.
+- For production migrations: use `npx prisma migrate deploy` with generated migration files (requires direct DB access on port 5432, not the Supabase pooler).
 
 **CORS errors in browser**
 - Confirm `CLIENT_URL` in server `.env` matches exactly what the browser shows (including protocol).

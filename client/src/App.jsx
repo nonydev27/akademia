@@ -4,6 +4,9 @@ import { useAuth } from './context/AuthContext';
 import ProtectedRoute    from './routes/ProtectedRoute';
 import DashboardLayout   from './layouts/DashboardLayout';
 import Login             from './pages/Auth/Login';
+import ForgotPassword   from './pages/Auth/ForgotPassword';
+import ResetPassword    from './pages/Auth/ResetPassword';
+import NotFound         from './pages/NotFound';
 
 // Super Admin
 import TenantsDashboard  from './pages/SuperAdmin/TenantsDashboard';
@@ -46,6 +49,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={<RootRedirect />} />
 
       {/* Super Admin */}
@@ -88,7 +93,7 @@ export default function App() {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

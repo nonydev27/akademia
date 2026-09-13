@@ -223,11 +223,15 @@ export default function Login() {
             </div>
           </div>
 
-          <div class="mt-8 text-center">
-              <p class="capitalize font-extrabold">forgotten password?</p>
-             <Button className="capitalize btn-accent mt-2" onClick={() => {}}>
-                reset password
-             </Button>
+          <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+            <p
+              style={{ color: '#64748b', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'none' }}
+              onMouseOver={(e) => { e.target.style.textDecoration = 'underline'; }}
+              onMouseOut={(e) => { e.target.style.textDecoration = 'none'; }}
+              onClick={() => { window.location.href = '/forgot-password'; }}
+            >
+              Forgot your password?
+            </p>
           </div>
         </div>
       </div>

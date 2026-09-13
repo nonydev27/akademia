@@ -1,8 +1,5 @@
 /**
  * services/email.service.js — abstracts the email provider (Resend or SMTP).
- *
- * All emails use a shared professional layout (header, body, footer)
- * with inline CSS for maximum compatibility across email clients.
  */
 
 import nodemailer from 'nodemailer';
@@ -87,10 +84,6 @@ async function send({ tenantId, to, subject, html, attachments, templateKey, ret
   }
 }
 
-// ── Shared Email Layout ──────────────────────────────────────────────────────
-// Professional email template with branded header, body area, and footer.
-// Uses inline CSS for compatibility with all email clients.
-
 function emailLayout({ title, children, schoolName, footerText }) {
   const school = schoolName || 'Akademia';
   const footer = footerText || `© ${new Date().getFullYear()} ${school}. All rights reserved.`;
@@ -102,17 +95,13 @@ function emailLayout({ title, children, schoolName, footerText }) {
   <title>${title}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
-  <!-- Preview text -->
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
     ${title}
   </div>
-  <!-- Outer wrapper -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;">
     <tr>
       <td align="center" style="padding:40px 16px;">
-        <!-- Email container -->
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-          <!-- Header bar -->
           <tr>
             <td style="background:linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 50%,#3b82f6 100%);padding:32px 32px 28px 32px;text-align:center;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -125,29 +114,24 @@ function emailLayout({ title, children, schoolName, footerText }) {
               </table>
             </td>
           </tr>
-          <!-- Accent bar -->
           <tr>
             <td style="height:4px;background:linear-gradient(90deg,#f59e0b 0%,#fbbf24 50%,#f59e0b 100%);font-size:0;line-height:0;">&nbsp;</td>
           </tr>
-          <!-- Title area -->
           <tr>
             <td style="padding:28px 32px 8px 32px;">
               <h1 style="margin:0;font-size:22px;font-weight:700;color:#0f172a;line-height:1.3;">${title}</h1>
             </td>
           </tr>
-          <!-- Divider -->
           <tr>
             <td style="padding:0 32px;">
               <div style="height:1px;background-color:#e2e8f0;"></div>
             </td>
           </tr>
-          <!-- Body content -->
           <tr>
             <td style="padding:24px 32px 32px 32px;">
               ${children}
             </td>
           </tr>
-          <!-- Footer -->
           <tr>
             <td style="background-color:#f8fafc;padding:20px 32px;border-top:1px solid #e2e8f0;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -172,16 +156,8 @@ function emailLayout({ title, children, schoolName, footerText }) {
 </html>`;
 }
 
-// ── Teacher Welcome Email ────────────────────────────────────────────────────
-
 export async function sendTeacherWelcomeEmail({
-  tenantId,
-  to,
-  teacherName,
-  schoolName,
-  email,
-  password,
-  loginUrl,
+  tenantId, to, teacherName, schoolName, email, password: teacherPassword, loginUrl,
 }) {
   const title = 'Welcome to Akademia';
   const children = `
@@ -190,25 +166,17 @@ export async function sendTeacherWelcomeEmail({
       You have been added as a teacher at <strong style="color:#0f172a;">${schoolName}</strong>.
       Here are your login details:
     </p>
-    <!-- Credentials card -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
       <tr>
         <td style="background-color:#eff6ff;border-radius:10px;padding:20px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
-            <tr>
-              <td style="padding:4px 0;color:#334155;"><strong style="color:#1e3a8a;">Name:</strong> ${teacherName}</td>
-            </tr>
-            <tr>
-              <td style="padding:4px 0;color:#334155;"><strong style="color:#1e3a8a;">Email:</strong> ${email}</td>
-            </tr>
-            <tr>
-              <td style="padding:4px 0;color:#334155;"><strong style="color:#1e3a8a;">Temporary Password:</strong> <span style="font-family:monospace;background:#e0e7ff;padding:2px 8px;border-radius:4px;color:#1e3a8a;font-weight:600;">${password}</span></td>
-            </tr>
+            <tr><td style="padding:4px 0;color:#334155;"><strong style="color:#1e3a8a;">Name:</strong> ${teacherName}</td></tr>
+            <tr><td style="padding:4px 0;color:#334155;"><strong style="color:#1e3a8a;">Email:</strong> ${email}</td></tr>
+            <tr><td style="padding:4px 0;color:#334155;"><strong style="color:#1e3a8a;">Temporary Password:</strong> <span style="font-family:monospace;background:#e0e7ff;padding:2px 8px;border-radius:4px;color:#1e3a8a;font-weight:600;">${teacherPassword}</span></td></tr>
           </table>
         </td>
       </tr>
     </table>
-    <!-- Login button -->
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:20px;">
       <tr>
         <td align="center">
@@ -224,17 +192,8 @@ export async function sendTeacherWelcomeEmail({
     </p>
   `;
   const html = emailLayout({ title, children, schoolName });
-  return send({
-    tenantId,
-    to,
-    subject: `Welcome to ${schoolName} — Your Teacher Account`,
-    html,
-    templateKey: 'TEACHER_WELCOME',
-    retryPayload: { teacherName, email },
-  });
+  return send({ tenantId, to, subject: `Welcome to ${schoolName} — Your Teacher Account`, html, templateKey: 'TEACHER_WELCOME', retryPayload: { teacherName, email } });
 }
-
-// ── Result Released Email ────────────────────────────────────────────────────
 
 export async function sendResultEmail({ tenantId, to, studentName, pdfBuffer, termLabel, schoolName }) {
   const title = `${studentName}'s Report Card — ${termLabel}`;
@@ -244,7 +203,6 @@ export async function sendResultEmail({ tenantId, to, studentName, pdfBuffer, te
       Good news! <strong style="color:#0f172a;">${studentName}</strong>'s report card for
       <strong style="color:#1e3a8a;">${termLabel}</strong> has been released and is ready for your review.
     </p>
-    <!-- Result card highlight -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
       <tr>
         <td style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border-radius:10px;padding:20px;border-left:4px solid #2563eb;">
@@ -264,17 +222,11 @@ export async function sendResultEmail({ tenantId, to, studentName, pdfBuffer, te
   `;
   const html = emailLayout({ title, children, schoolName });
   return send({
-    tenantId,
-    to,
-    subject: `${studentName}'s Report Card for ${termLabel} is Ready`,
-    html,
+    tenantId, to, subject: `${studentName}'s Report Card for ${termLabel} is Ready`, html,
     attachments: [{ filename: `${studentName}-${termLabel}-report-card.pdf`, content: pdfBuffer }],
-    templateKey: 'RESULT_RELEASED',
-    retryPayload: { studentName, termLabel },
+    templateKey: 'RESULT_RELEASED', retryPayload: { studentName, termLabel },
   });
 }
-
-// ── Fee Reminder Email ───────────────────────────────────────────────────────
 
 export async function sendFeeReminderEmail({ tenantId, to, studentName, balance, termLabel, schoolName }) {
   const title = `Outstanding Fees — ${studentName}`;
@@ -284,7 +236,6 @@ export async function sendFeeReminderEmail({ tenantId, to, studentName, balance,
       We wanted to let you know that <strong style="color:#0f172a;">${studentName}</strong>'s report card for
       <strong style="color:#1e3a8a;">${termLabel}</strong> is being held due to an outstanding fee balance.
     </p>
-    <!-- Balance card -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
       <tr>
         <td style="background:linear-gradient(135deg,#fef2f2 0%,#fee2e2 100%);border-radius:10px;padding:20px;border-left:4px solid #ef4444;">
@@ -304,20 +255,11 @@ export async function sendFeeReminderEmail({ tenantId, to, studentName, balance,
     </p>
   `;
   const html = emailLayout({ title, children, schoolName });
-  return send({
-    tenantId,
-    to,
-    subject: `Outstanding Fees for ${studentName} — ${termLabel}`,
-    html,
-    templateKey: 'FEE_REMINDER',
-    retryPayload: { studentName, balance, termLabel },
-  });
+  return send({ tenantId, to, subject: `Outstanding Fees for ${studentName} — ${termLabel}`, html, templateKey: 'FEE_REMINDER', retryPayload: { studentName, balance, termLabel } });
 }
 
-const ADMIN_NOTIFICATION_EMAILS = ['karldjansi123@gmail.com', 'djansikarl@gmail.com'];
-
 export async function sendAdminNotification({ tenantId, to, subject, templateKey, data }) {
-  const recipients = to && to.length ? to : ADMIN_NOTIFICATION_EMAILS;
+  const recipients = to && to.length ? to : [];
   const title = 'Akademia Admin Notification';
   const rows = Object.entries(data || {}).map(([key, value]) => `
     <tr>
@@ -347,4 +289,32 @@ export async function sendAdminNotification({ tenantId, to, subject, templateKey
   if (failures.length > 0) {
     throw new Error(`Admin notification: ${failures.length}/${results.length} emails failed`);
   }
+}
+
+export async function sendPasswordResetEmail({ tenantId, to, resetUrl, fullName }) {
+  const title = 'Reset Your Akademia Password';
+  const children = `
+    <p style="margin:0 0 16px 0;font-size:15px;color:#334155;line-height:1.7;">Hello <strong style="color:#0f172a;">${fullName}</strong>,</p>
+    <p style="margin:0 0 20px 0;font-size:15px;color:#475569;line-height:1.7;">
+      We received a request to reset your password. Click the button below to create a new password. This link expires in 1 hour.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:20px;">
+      <tr>
+        <td align="center">
+          <a href="${resetUrl}" target="_blank" style="display:inline-block;background-color:#2563eb;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;letter-spacing:0.3px;">Reset Password</a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#475569;line-height:1.7;">
+      If you did not request a password reset, you can safely ignore this email. Your password will not be changed.
+    </p>
+    <p style="margin:0;font-size:15px;color:#475569;line-height:1.7;">
+      Need help? Contact your school administrator or support@akademia.app.
+    </p>
+  `;
+  const html = emailLayout({ title, children, schoolName: 'Akademia' });
+  return send({
+    tenantId, to, subject: 'Reset Your Akademia Password', html,
+    templateKey: 'PASSWORD_RESET', retryPayload: { fullName, email: to },
+  });
 }

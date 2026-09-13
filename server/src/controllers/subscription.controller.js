@@ -21,7 +21,6 @@ import { planPrice, planFeatures, effectiveFeatures, isValidPlan } from '../conf
 import { sendAdminNotification } from '../services/email.service.js';
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-const ADMIN_NOTIFICATION_EMAILS = ['karldjansi123@gmail.com', 'djansikarl@gmail.com'];
 
 export async function status(req, res) {
   const subscription = await prisma.subscription.findUnique({ where: { tenantId: req.tenantId } });
@@ -114,20 +113,27 @@ export async function verifyByReference(req, res) {
 
   try {
     const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
-    await sendAdminNotification({
-      tenantId: req.tenantId,
-      to: ADMIN_NOTIFICATION_EMAILS,
-      subject: `Subscription Renewed — ${tenant?.name ?? 'School'}`,
-      templateKey: 'SUBSCRIPTION_RENEWED',
-      data: {
-        schoolName: tenant?.name ?? 'Akademia',
-        plan: subscription.plan,
-        amount: subscription.lastPaymentAmt,
-        reference: subscription.lastPaymentRef,
-        expiresAt: subscription.expiresAt,
-      },
+    const admins = await prisma.user.findMany({
+      where: { tenantId: req.tenantId, role: 'SCHOOL_ADMIN' },
+      select: { email: true },
     });
-  } catch { /* non-fatal: notification failure should not block renewal */ }
+    const adminEmails = admins.map((a) => a.email);
+    if (adminEmails.length > 0) {
+      await sendAdminNotification({
+        tenantId: req.tenantId,
+        to: adminEmails,
+        subject: `Subscription Renewed — ${tenant?.name ?? 'School'}`,
+        templateKey: 'SUBSCRIPTION_RENEWED',
+        data: {
+          schoolName: tenant?.name ?? 'Akademia',
+          plan: subscription.plan,
+          amount: subscription.lastPaymentAmt,
+          reference: subscription.lastPaymentRef,
+          expiresAt: subscription.expiresAt,
+        },
+      });
+    }
+  } catch (err) { /* non-fatal: notification failure should not block renewal */ }
 
   res.json({ message: 'Subscription renewed', subscription });
 }

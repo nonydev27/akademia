@@ -107,7 +107,7 @@ async function structureWithLLM(rows) {
     const body = await res.json();
     const content = body.choices?.[0]?.message?.content;
     return content ? JSON.parse(content) : null;
-  } catch {
+  } catch (err) {
     return null;
   }
 }

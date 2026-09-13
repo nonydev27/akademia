@@ -82,7 +82,7 @@ export async function createTeacher(req, res) {
       schoolName: tenant?.name ?? 'Akademia',
       loginUrl:   env.CLIENT_URL,
     });
-  } catch { /* non-fatal: email failure should not block teacher creation */ }
+  } catch (err) { /* non-fatal: email failure should not block teacher creation */ }
 
   res.status(201).json({
     teacher: {

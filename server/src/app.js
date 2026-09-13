@@ -9,6 +9,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 
 import authRoutes         from './routes/auth.routes.js';
+import passwordResetRoutes from './routes/passwordReset.routes.js';
 import tenantRoutes       from './routes/tenant.routes.js';
 import studentRoutes      from './routes/student.routes.js';
 import attendanceRoutes   from './routes/attendance.routes.js';
@@ -45,6 +46,7 @@ if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/v1/auth',           authRoutes);
+app.use('/api/v1/auth',           passwordResetRoutes);
 app.use('/api/v1/tenants',        tenantRoutes);
 app.use('/api/v1/students',       studentRoutes);
 app.use('/api/v1/attendance',     attendanceRoutes);
