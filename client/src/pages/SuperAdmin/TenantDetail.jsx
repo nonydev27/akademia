@@ -9,12 +9,38 @@ import Modal       from '../../components/ui/Modal';
 import Input       from '../../components/ui/Input';
 import { ArrowLeft, School, KeyRound, Users, UserRound, UserPlus } from 'lucide-react';
 
+const FEATURES = [
+  { key: 'students',   label: 'Student Records',     tier: 'basic' },
+  { key: 'grades',     label: 'Grades & Report Cards', tier: 'basic' },
+  { key: 'fees',       label: 'Fee Management',       tier: 'standard' },
+  { key: 'email',      label: 'Email Notifications',  tier: 'standard' },
+  { key: 'attendance', label: 'Attendance Tracking',  tier: 'premium' },
+  { key: 'terms',      label: 'Term Management',      tier: 'premium' },
+  { key: 'subjects',   label: 'Subject Management',   tier: 'premium' },
+];
+
+const TIERS = {
+  basic:    { name: 'Basic',    price: 'GHS 2,800/year' },
+  standard: { name: 'Standard', price: 'GHS 4,800/year' },
+  premium:  { name: 'Premium',  price: 'GHS 8,200/year' },
+};
+
+function detectTier(features) {
+  if (!features) return 'basic';
+  const premiumOnly = ['attendance', 'terms', 'subjects'];
+  const standardOnly = ['fees', 'email'];
+  if (premiumOnly.some((k) => features[k])) return 'premium';
+  if (standardOnly.some((k) => features[k])) return 'standard';
+  return 'basic';
+}
+
 export default function TenantDetail() {
   const { id }    = useParams();
   const navigate  = useNavigate();
   const [tenant, setTenant]       = useState(null);
   const [loading, setLoading]     = useState(true);
   const [subForm, setSubForm]     = useState({});
+  const [featuresForm, setFeaturesForm] = useState({});
   const [saving, setSaving]       = useState(false);
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [adminForm, setAdminForm] = useState({ fullName: '', email: '', password: '', phone: '' });
@@ -26,10 +52,22 @@ export default function TenantDetail() {
     setLoading(true);
     try {
       const res = await tenantsApi.get(id);
-      setTenant(res.data.tenant);
+      const t = res.data.tenant;
+      setTenant(t);
       setSubForm({
-        status:    res.data.tenant.subscription?.status || 'ACTIVE',
-        expiresAt: res.data.tenant.subscription?.expiresAt?.split('T')[0] || '',
+        status:    t.subscription?.status || 'ACTIVE',
+        expiresAt: t.subscription?.expiresAt?.split('T')[0] || '',
+      });
+      const feats = t.subscription?.features || {};
+      setFeaturesForm({
+        students:   true,
+        grades:     true,
+        fees:       true,
+        email:      true,
+        attendance: true,
+        terms:      true,
+        subjects:   true,
+        ...feats,
       });
     } catch {
       toast.error('Failed to load school');
@@ -52,6 +90,24 @@ export default function TenantDetail() {
     }
   }
 
+  async function saveFeatures(e) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await tenantsApi.updateFeatures(id, featuresForm);
+      toast.success('Feature access updated');
+      fetchTenant();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Update failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function toggleFeature(key) {
+    setFeaturesForm((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
   async function handleAddAdmin(e) {
     e.preventDefault();
     setCreatingAdmin(true);
@@ -71,6 +127,7 @@ export default function TenantDetail() {
   const daysRemaining = tenant?.subscription?.expiresAt
     ? Math.ceil((new Date(tenant.subscription.expiresAt) - Date.now()) / 86400000)
     : null;
+  const currentTier = tenant?.subscription?.features ? detectTier(tenant.subscription.features) : 'basic';
 
   if (loading) {
     return (
@@ -145,6 +202,11 @@ export default function TenantDetail() {
             )}
           </div>
 
+          <div className="mb-3 px-3 py-2 bg-slate-50 rounded-lg text-sm">
+            <span className="font-semibold text-slate-700">Plan: {TIERS[currentTier]?.name}</span>
+            <span className="text-slate-500 ml-2">{TIERS[currentTier]?.price}</span>
+          </div>
+
           <form onSubmit={saveSubscription} className="space-y-3">
             <div>
               <label className="label">Status</label>
@@ -165,6 +227,32 @@ export default function TenantDetail() {
             </Button>
           </form>
         </div>
+      </div>
+
+      {/* Feature Access */}
+      <div className="card p-6 animate-fade-in-up">
+        <form onSubmit={saveFeatures}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-slate-800 flex items-center gap-2">Feature Access</h2>
+            <Button type="submit" variant="primary" size="sm" loading={saving}>
+              Save Features
+            </Button>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {FEATURES.map(({ key, label, tier }) => (
+              <label key={key} className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                <input type="checkbox"
+                  checked={featuresForm[key] !== false}
+                  onChange={() => toggleFeature(key)}
+                  className="w-4 h-4 text-brand-600 rounded focus:ring-brand-500" />
+                <div>
+                  <div className="text-sm font-medium text-slate-800">{label}</div>
+                  <div className="text-xs text-slate-400 uppercase">{tier}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </form>
       </div>
 
       {/* Users */}

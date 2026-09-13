@@ -1,16 +1,12 @@
 /**
- * services/grade.service.js — multi-score aggregation formula.
+ * services/grade.service.js — grade aggregation formula.
  *
- * Three score types:
- *   caScore      — Continuous Assessment (class tests, quizzes, homework)  → 30%
- *   midtermScore — Mid-term / mid-semester examination                     → 20%
- *   examScore    — End-of-term / end-of-semester examination                 → 50%
+ * Two score types:
+ *   caScore   — Continuous Assessment (class tests, quizzes, homework) → 30%
+ *   examScore — End-of-term / end-of-semester examination               → 70%
  *
- * Partial scores are handled gracefully:
- *   - If only some scores are provided, the aggregate is computed from what's
- *     available, scaled to 100, so teachers can see progress.
- *   - The final grade on a report card should only be published once all three
- *     scores are present (enforced by the publish workflow, not here).
+ * Both caScore and examScore are required; if either is missing the
+ * aggregate returns null so incomplete grades are never published.
  *
  * Grade bands are configurable by admin via the GradeBand model.
  * If no bands are provided, fall back to sensible defaults.
@@ -26,26 +22,8 @@ const DEFAULT_BANDS = [
 ];
 
 export function computeAggregate({ caScore, midtermScore, examScore }) {
-  if (caScore == null && midtermScore == null && examScore == null) return null;
-
-  let weighted = 0;
-  let totalWeight = 0;
-
-  if (caScore != null) {
-    weighted    += caScore * 0.30;
-    totalWeight += 0.30;
-  }
-  if (midtermScore != null) {
-    weighted    += midtermScore * 0.20;
-    totalWeight += 0.20;
-  }
-  if (examScore != null) {
-    weighted    += examScore * 0.50;
-    totalWeight += 0.50;
-  }
-
-  const raw = totalWeight > 0 ? weighted / totalWeight : 0;
-  return Math.round(raw * 100) / 100;
+  if (caScore == null || examScore == null) return null;
+  return Math.round((caScore * 0.30 + examScore * 0.70) * 100) / 100;
 }
 
 export function letterGrade(aggregate, bands = DEFAULT_BANDS) {

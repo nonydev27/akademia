@@ -214,29 +214,26 @@ Tests cover the fee balance service and grade aggregation service.
 
 ---
 
-## 7. Tauri Desktop Packaging (Windows .exe)
+## 7. Tauri Desktop Packaging (Windows .exe) ✅ COMPLETE
 
-> Do this after the web UI is stable and you have a working production API.
+> Completed September 2026. See [docs/TAURI.md](TAURI.md) for full integration guide.
 
-Prerequisites: Install Rust (https://rustup.rs) and the Visual Studio C++ build tools.
+Tauri v2 is configured with the following files:
+- `client/src-tauri/tauri.conf.json` — app config (product name, version, window, build targets, icons)
+- `client/src-tauri/Cargo.toml` — Rust manifest (Tauri 2.11.3 + log plugin)
+- `client/src-tauri/src/main.rs` — entry point (delegates to lib.rs)
+- `client/src-tauri/src/lib.rs` — Tauri builder (log plugin in dev mode, app runner)
+- `client/src-tauri/build.rs` — build script (tauri_build::build())
+- `client/src-tauri/capabilities/default.json` — default permissions
+- `client/src-tauri/icons/` — app icons (PNG, ICO, ICNS formats)
+
+Prerequisites: Rust (https://rustup.rs) and Visual Studio C++ Build Tools.
+
+Commands remain unchanged:
 
 ```bash
 cd client
 
-# Install Tauri CLI
-npm install -D @tauri-apps/cli
-
-# Initialize Tauri (first time only)
-npx tauri init
-```
-
-When prompted:
-- App name: `Akademia`
-- Window title: `Akademia — School Management`
-- Dist dir: `../dist`
-- Dev server URL: `http://localhost:5173`
-
-```bash
 # Development desktop window
 npx tauri dev
 
@@ -246,7 +243,7 @@ npx tauri build
 
 Output: `src-tauri/target/release/bundle/msi/Akademia_*.msi`
 
-**⚠️ Security note:** Do NOT embed the production `PAYSTACK_SECRET_KEY` or any server secrets in the desktop app. 
+**⚠️ Security note:** Do NOT embed the production `PAYSTACK_SECRET_KEY` or any server secrets in the desktop app.
 The Tauri app only talks to your deployed API server. Keep secrets server-side only.
 
 ---

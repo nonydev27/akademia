@@ -49,6 +49,7 @@ export async function requireActiveSubscription(req, res, next) {
   const now = new Date();
 
   if (subscription.status === 'ACTIVE' && subscription.expiresAt > now) {
+    req.subscriptionFeatures = subscription.features || {};
     return next();
   }
 
@@ -75,6 +76,7 @@ export async function requireActiveSubscription(req, res, next) {
       const updated = await prisma.subscription.findUnique({ where: { tenantId } });
       if (updated) setCached(tenantId, updated);
     }
+    req.subscriptionFeatures = (fresh || subscription).features || {};
     return next();
   }
 
@@ -87,6 +89,14 @@ export async function requireActiveSubscription(req, res, next) {
   }
 
   throw new ApiError(402, 'Your school\'s subscription has expired. Please renew to continue.');
+}
+
+export function requireFeature(feature) {
+  return (req, res, next) => {
+    const features = req.subscriptionFeatures || {};
+    if (features[feature] !== false) return next();
+    throw ApiError.forbidden(`This school's subscription does not include access to ${feature}. Contact the platform administrator.`);
+  };
 }
 
 export { invalidateCached };

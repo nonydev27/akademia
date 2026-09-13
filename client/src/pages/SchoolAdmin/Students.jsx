@@ -9,8 +9,19 @@ import Input       from '../../components/ui/Input';
 import StatusBadge from '../../components/ui/StatusBadge';
 import {
   Plus, Search, X, Users, UserCircle,
-  GraduationCap, Trophy, IdCard, Eye, ChevronRight, ChevronLeft, Pencil,
+  GraduationCap, Trophy, IdCard, Eye, ChevronRight, ChevronLeft, Pencil, Camera,
 } from 'lucide-react';
+
+const NATIONALITIES = [
+  'Ghana', 'Nigeria', 'Togo', 'Benin', 'Burkina Faso', "Côte d'Ivoire",
+  'Sierra Leone', 'Liberia', 'Guinea', 'Senegal', 'Gambia', 'Cape Verde',
+  'Egypt', 'Kenya', 'Uganda', 'Tanzania', 'South Africa', 'Ethiopia', 'Other',
+];
+
+const RELIGIONS = [
+  'Christianity', 'Islam', 'Traditional African Religion', 'Hinduism',
+  'Buddhism', 'Other', 'No Religion',
+];
 
 const STEPS = [
   { id: 'personal',      label: 'Personal',       icon: UserCircle },
@@ -21,7 +32,7 @@ const STEPS = [
 ];
 
 const EMPTY_FORM = {
-  admissionNumber: '', fullName: '', dateOfBirth: '', gender: '',
+  fullName: '', dateOfBirth: '', gender: '',
   nationality: '', religion: '', address: '', email: '', phone: '',
   previousSchool: '', classId: '',
   sports: '', clubs: '', otherActivities: '',
@@ -38,6 +49,7 @@ export default function Students() {
   const [showAdd,  setShowAdd]  = useState(false);
   const [step,     setStep]     = useState(0);
   const [form,     setForm]     = useState(EMPTY_FORM);
+  const [admissionNumber, setAdmissionNumber] = useState('');
   const [saving,   setSaving]   = useState(false);
   const [classes,  setClasses]   = useState([]);
 
@@ -82,10 +94,15 @@ export default function Students() {
     finally { setDetailLoading(false); }
   }
 
-  function openAdd() {
+  async function openAdd() {
     setForm(EMPTY_FORM);
+    setAdmissionNumber('');
     setStep(0);
     setShowAdd(true);
+    try {
+      const res = await studentsApi.get('next-student-id');
+      setAdmissionNumber(res.data.admissionNumber);
+    } catch { /* auto-gen will happen server-side if API fails */ }
   }
 
   function setField(key, val) {
@@ -96,6 +113,7 @@ export default function Students() {
     setSaving(true);
     try {
       await studentsApi.create({
+        admissionNumber,
         ...form,
         dateOfBirth: form.dateOfBirth || undefined,
         email:       form.email || undefined,
@@ -201,9 +219,11 @@ export default function Students() {
         {step === 0 && (
           <div className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input label="Student ID (leave blank to auto-generate)" value={form.admissionNumber}
-                placeholder="e.g. VIS-001 — auto if left blank"
-                onChange={(e) => setField('admissionNumber', e.target.value)} />
+              <div>
+                <label className="label">Student ID</label>
+                <input className="input" value={admissionNumber} disabled
+                  placeholder="Auto-generated" />
+              </div>
               <Input label="Full Name *" value={form.fullName}
                 onChange={(e) => setField('fullName', e.target.value)} required />
               <Input label="Date of Birth" type="date" value={form.dateOfBirth}
@@ -215,10 +235,22 @@ export default function Students() {
                   <option>Male</option><option>Female</option><option>Other</option>
                 </select>
               </div>
-              <Input label="Nationality" value={form.nationality}
-                onChange={(e) => setField('nationality', e.target.value)} />
-              <Input label="Religion" value={form.religion}
-                onChange={(e) => setField('religion', e.target.value)} />
+              <div>
+                <label className="label">Nationality</label>
+                <select className="input" value={form.nationality}
+                  onChange={(e) => setField('nationality', e.target.value)}>
+                  <option value="">Select…</option>
+                  {NATIONALITIES.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Religion</label>
+                <select className="input" value={form.religion}
+                  onChange={(e) => setField('religion', e.target.value)}>
+                  <option value="">Select…</option>
+                  {RELIGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
               <Input label="Phone Number" type="tel" value={form.phone}
                 onChange={(e) => setField('phone', e.target.value)} />
               <Input label="Email Address" type="email" value={form.email}
@@ -226,6 +258,28 @@ export default function Students() {
             </div>
             <Input label="Home Address" value={form.address}
               onChange={(e) => setField('address', e.target.value)} />
+            <div>
+              <label className="label">Profile Picture</label>
+              <div className="flex items-center gap-3">
+                {form.profilePicUrl ? (
+                  <img src={form.profilePicUrl} alt="Preview" className="w-12 h-12 rounded-full object-cover border-2 border-brand-200" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                )}
+                <input type="file" accept="image/jpeg,image/png,image/jpg,image/webp"
+                  className="text-sm file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 file:font-medium hover:file:bg-brand-100"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setField('profilePicUrl', ev.target.result);
+                      reader.readAsDataURL(file);
+                    }
+                  }} />
+              </div>
+            </div>
           </div>
         )}
 
@@ -279,8 +333,8 @@ export default function Students() {
             <Input label="NHIS Number" value={form.nhisNumber}
               placeholder="National Health Insurance Scheme number"
               onChange={(e) => setField('nhisNumber', e.target.value)} />
-            <Input label="Profile Picture URL" value={form.profilePicUrl}
-              placeholder="https://…  (upload to Supabase Storage first)"
+            <Input label="Profile Picture URL (optional)" value={form.profilePicUrl}
+              placeholder="https://…  (or upload in Personal step)"
               onChange={(e) => setField('profilePicUrl', e.target.value)} />
           </div>
         )}
@@ -299,7 +353,7 @@ export default function Students() {
               )}
               <div>
                 <div className="text-xl font-bold text-slate-900">{form.fullName || '—'}</div>
-                <div className="text-sm text-slate-500">{form.admissionNumber}</div>
+                <div className="text-sm text-slate-500">{admissionNumber}</div>
               </div>
             </div>
 
@@ -328,7 +382,7 @@ export default function Students() {
           </Button>
           {step < STEPS.length - 1 ? (
             <Button variant="primary"
-              disabled={step === 0 && (!form.admissionNumber || !form.fullName)}
+              disabled={step === 0 && !form.fullName}
               onClick={() => setStep((s) => s + 1)}>
               Next <ChevronRight className="w-4 h-4" />
             </Button>

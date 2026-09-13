@@ -15,6 +15,7 @@ const router = Router();
 router.use(requireAuth, attachTenant, requireActiveSubscription);
 
 router.get('/', validate({ query: controller.listQuerySchema }), controller.list);
+router.get('/next-student-id', controller.getNextStudentId);
 router.post('/', requireRole('SCHOOL_ADMIN'), validate({ body: controller.createStudentSchema }), controller.create);
 router.get('/:id', controller.getById);
 router.patch(

@@ -9,7 +9,7 @@ import {
   LayoutDashboard, School, Users, CheckSquare, Wallet,
   NotebookPen, ClipboardCheck, Send, KeyRound, LogOut, ChevronLeft,
   ChevronRight, Menu, AlertTriangle, ArrowRight, HelpCircle, Users2,
-  BookOpen, UserCircle, Building2, Layers, Calendar,
+  BookOpen, UserCircle, Building2, Layers, Calendar, Lock,
 } from 'lucide-react';
 
 const ICON_SIZE = 'w-[18px] h-[18px]';
@@ -18,6 +18,21 @@ const NAV_SUPER_ADMIN = [
   { to: '/super-admin',         icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
   { to: '/super-admin/schools', icon: <School className={ICON_SIZE} />,          label: 'Schools' },
 ];
+
+const FEATURE_NAV_MAP = {
+  '/admin/students':        'students',
+  '/admin/subjects':        'subjects',
+  '/admin/classes':         'classes',
+  '/admin/attendance':      'attendance',
+  '/admin/fees':            'fees',
+  '/admin/grades':          'grades',
+  '/admin/results':         'grades',
+  '/admin/terms':           'terms',
+  '/admin/communications':  'email',
+  '/staff/attendance':      'attendance',
+  '/staff/grades':          'grades',
+  '/staff/subjects':        'subjects',
+};
 
 const NAV_SCHOOL_ADMIN = [
   { to: '/admin',                icon: <LayoutDashboard className={ICON_SIZE} />, label: 'Dashboard' },
@@ -43,11 +58,17 @@ const NAV_STAFF = [
   { to: '/staff/profile',       icon: <UserCircle className={ICON_SIZE} />,      label: 'My Profile' },
 ];
 
-function getNav(role) {
-  if (role === 'SUPER_ADMIN')  return NAV_SUPER_ADMIN;
-  if (role === 'SCHOOL_ADMIN') return NAV_SCHOOL_ADMIN;
-  if (role === 'STAFF')        return NAV_STAFF;
-  return [];
+function getNav(role, features = {}) {
+  const base = role === 'SUPER_ADMIN' ? NAV_SUPER_ADMIN : role === 'SCHOOL_ADMIN' ? NAV_SCHOOL_ADMIN : NAV_STAFF;
+  if (role === 'SUPER_ADMIN') return base;
+  return base.map((item) => {
+    const required = FEATURE_NAV_MAP[item.to];
+    if (!required) return item;
+    if (features[required] === false) {
+      return { ...item, locked: true };
+    }
+    return item;
+  });
 }
 
 function initials(name = '') {
@@ -61,7 +82,7 @@ export default function DashboardLayout() {
   const [mobileOpen, setMobile]   = useState(false);
   const [helpOpen, setHelpOpen]   = useState(false);
 
-  const nav = getNav(user?.role);
+  const nav = getNav(user?.role, user?.features);
 
   const handleLogout = async () => {
     await logout();
@@ -104,21 +125,24 @@ export default function DashboardLayout() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
-          {nav.map((item, i) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to.split('/').length <= 2}
-              className={({ isActive }) => `nav-item group ${isActive ? 'active' : ''}`}
-              style={{ animationDelay: `${i * 60}ms` }}
-              onClick={() => setMobile(false)}
-            >
-              <span className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                {item.icon}
-              </span>
-              {!collapsed && <span className="animate-fade-in truncate">{item.label}</span>}
-            </NavLink>
-          ))}
+          {nav.map((item, i) => {
+            const Icon = item.locked ? Lock : item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.locked ? '#' : item.to}
+                end={item.to.split('/').length <= 2}
+                className={({ isActive }) => `nav-item group ${isActive ? 'active' : ''} ${item.locked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{ animationDelay: `${i * 60}ms` }}
+                onClick={(e) => { if (item.locked) { e.preventDefault(); toast.error(`${item.label} is not included in your current subscription. Contact the platform administrator.`); } else setMobile(false); }}
+              >
+                <span className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                  {Icon}
+                </span>
+                {!collapsed && <span className="animate-fade-in truncate">{item.label}</span>}
+              </NavLink>
+            );
+          })}
         </nav>
 
         {/* User + Collapse */}

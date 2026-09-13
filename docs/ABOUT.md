@@ -50,8 +50,11 @@ everything as a Windows desktop application via Tauri.
 - **Notifications:** react-hot-toast
 - **Auth state:** Supabase JS client + React Context
 
-### Desktop (planned)
+### Desktop
 - **Packaging:** Tauri — wraps the Vite build into a native Windows `.exe` / `.msi` installer
+- **Config:** `client/src-tauri/tauri.conf.json` (window size, build targets, icons)
+- **Shell:** `client/src-tauri/src/lib.rs` (Tauri builder + log plugin) and `main.rs` (entry point)
+- **Docs:** See [docs/TAURI.md](TAURI.md) for full integration guide
 
 ---
 
@@ -155,7 +158,7 @@ akademia/
 6. ✅ Grading
 7. ✅ Result dispatch (Result-Fee Intercept)
 8. ✅ Subscription & licensing
-9. ⬜ Tauri desktop packaging
+9. ✅ Tauri desktop packaging
 10. ⬜ Production hardening
 
 ---

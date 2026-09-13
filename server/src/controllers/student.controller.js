@@ -120,6 +120,11 @@ async function findTenantStudent(tenantId, id) {
   return student;
 }
 
+export async function getNextStudentId(req, res) {
+  const id = await nextStudentId(req.tenantId);
+  res.json({ admissionNumber: id });
+}
+
 export async function getById(req, res) {
   await findTenantStudent(req.tenantId, req.params.id);
 

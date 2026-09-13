@@ -20,13 +20,17 @@ export async function registerTenant(req, res) {
 }
 
 export async function me(req, res) {
-  // Also return tenant name for header display
   let tenantName = null;
+  let features = {};
   if (req.user.tenantId) {
     const tenant = await import('../config/db.js').then((m) =>
       m.default.tenant.findUnique({ where: { id: req.user.tenantId }, select: { name: true } })
     );
     tenantName = tenant?.name ?? null;
+    const sub = await import('../config/db.js').then((m) =>
+      m.default.subscription.findUnique({ where: { tenantId: req.user.tenantId }, select: { features: true } })
+    );
+    features = sub?.features || {};
   }
-  res.json({ user: { ...req.user, tenantName } });
+  res.json({ user: { ...req.user, tenantName, features } });
 }

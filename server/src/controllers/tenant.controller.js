@@ -79,6 +79,17 @@ export async function createTenantAdmin(req, res) {
   });
 }
 
+export const updateFeaturesSchema = z.record(z.string(), z.boolean());
+
+export async function updateFeatures(req, res) {
+  invalidateCached(req.params.id);
+  const features = await prisma.subscription.update({
+    where: { tenantId: req.params.id },
+    data: { features: req.body },
+  });
+  res.json({ features });
+}
+
 export async function updateSubscription(req, res) {
   invalidateCached(req.tenantId);
   const subscription = await prisma.subscription.update({

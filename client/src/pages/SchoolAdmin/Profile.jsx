@@ -1,19 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { profileApi } from '../../api/profile';
 import { supabase }   from '../../lib/supabaseClient';
 import { useAuth }    from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 import Input  from '../../components/ui/Input';
-import { UserCircle, Mail, Phone, KeyRound, Save, ShieldCheck } from 'lucide-react';
+import { UserCircle, Mail, Phone, KeyRound, Save, ShieldCheck, Camera, X } from 'lucide-react';
 
 export default function Profile() {
   const { user, refreshProfile } = useAuth();
 
   const [profile,  setProfile]  = useState(null);
   const [loading,  setLoading]  = useState(true);
-  const [form,     setForm]     = useState({ fullName: '', phone: '' });
+  const [form,     setForm]     = useState({ fullName: '', phone: '', image: '' });
   const [saving,   setSaving]   = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [preview,  setPreview]  = useState(null);
+  const fileRef    = useRef(null);
 
   const [pwForm,   setPwForm]   = useState({ newPassword: '', confirm: '' });
   const [savingPw, setSavingPw] = useState(false);
@@ -22,8 +25,10 @@ export default function Profile() {
     (async () => {
       try {
         const res = await profileApi.get();
-        setProfile(res.data.user);
-        setForm({ fullName: res.data.user.fullName || '', phone: res.data.user.phone || '' });
+        const u = res.data.user;
+        setProfile(u);
+        setForm({ fullName: u.fullName || '', phone: u.phone || '', image: u.image || '' });
+        if (u.image) setPreview(u.image);
       } catch {
         toast.error('Failed to load profile');
       } finally { setLoading(false); }
@@ -34,12 +39,44 @@ export default function Profile() {
     e.preventDefault();
     setSaving(true);
     try {
-      await profileApi.update(form);
+      await profileApi.update({ fullName: form.fullName, phone: form.phone, image: form.image || undefined });
       toast.success('Profile updated');
       refreshProfile();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Update failed');
     } finally { setSaving(false); }
+  }
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error('Image must be under 2 MB'); return; }
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64 = ev.target.result;
+        try {
+          const { data } = await profileApi.uploadAvatar(base64);
+          setForm((f) => ({ ...f, image: data.image }));
+          setPreview(data.image);
+          toast.success('Profile picture updated');
+          refreshProfile();
+        } catch (err) {
+          toast.error(err.response?.data?.message || 'Upload failed');
+        } finally { setUploading(false); }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      toast.error('Upload failed');
+      setUploading(false);
+    }
+  }
+
+  function handleRemoveImage() {
+    setForm((f) => ({ ...f, image: '' }));
+    setPreview(null);
+    handleSave({ preventDefault: () => {} });
   }
 
   async function handlePasswordChange(e) {
@@ -80,19 +117,45 @@ export default function Profile() {
 
       {/* Avatar */}
       <div className="card p-6 flex items-center gap-5">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800
-                        flex items-center justify-center text-white text-3xl font-bold flex-shrink-0">
-          {user?.fullName?.[0] || '?'}
+        <div className="relative flex-shrink-0">
+          {preview ? (
+            <img src={preview} alt="Profile" className="w-20 h-20 rounded-2xl object-cover border-2 border-brand-200" />
+          ) : (
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800
+                            flex items-center justify-center text-white text-3xl font-bold">
+              {user?.fullName?.[0] || '?'}
+            </div>
+          )}
+          <button type="button" onClick={() => fileRef.current?.click()}
+            className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-brand-600 hover:bg-brand-700
+                       flex items-center justify-center text-white shadow-md transition-colors"
+            title="Change profile picture">
+            {uploading ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Camera className="w-4 h-4" />
+            )}
+          </button>
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/jpg,image/webp"
+            className="hidden" onChange={handleFile} />
         </div>
-        <div>
-          <div className="text-xl font-bold text-slate-900">{profile?.fullName}</div>
-          <div className="text-sm text-slate-500">{profile?.email}</div>
-          <div className="mt-1">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              {profile?.role?.replace('_', ' ')}
-            </span>
+        <div className="flex items-center gap-3">
+          <div>
+            <div className="text-xl font-bold text-slate-900">{profile?.fullName}</div>
+            <div className="text-sm text-slate-500">{profile?.email}</div>
+            <div className="mt-1">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                {profile?.role?.replace('_', ' ')}
+              </span>
+            </div>
           </div>
+          {preview && (
+            <button type="button" onClick={handleRemoveImage}
+              className="text-slate-400 hover:text-red-500 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
