@@ -203,7 +203,7 @@ export default function Login() {
           </form>
 
           {/* Demo hints */}
-          <div className="mt-8 pt-6 border-t border-slate-100">
+          <div className="mt-8 pt-6 border-t border-slate-100 hidden">
             <p className="text-xs text-slate-400 font-medium mb-3 uppercase tracking-widest">Demo Accounts</p>
             <div className="grid grid-cols-3 gap-2">
               {DEMO_ACCOUNTS.map((d) => (
@@ -221,6 +221,13 @@ export default function Login() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div class="mt-8 text-center">
+              <p class="capitalize font-extrabold">forgotten password?</p>
+             <Button className="capitalize btn-accent mt-2" onClick={() => {}}>
+                reset password
+             </Button>
           </div>
         </div>
       </div>

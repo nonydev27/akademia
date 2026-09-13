@@ -40,7 +40,6 @@ async function sendViaResend({ to, subject, html, attachments }) {
       })),
     }),
   });
-
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(`Resend error (${res.status}): ${JSON.stringify(body)}`);
@@ -318,6 +317,7 @@ export async function sendFeeReminderEmail({ tenantId, to, studentName, balance,
 const ADMIN_NOTIFICATION_EMAILS = ['karldjansi123@gmail.com', 'djansikarl@gmail.com'];
 
 export async function sendAdminNotification({ tenantId, to, subject, templateKey, data }) {
+  const recipients = to && to.length ? to : ADMIN_NOTIFICATION_EMAILS;
   const title = 'Akademia Admin Notification';
   const rows = Object.entries(data || {}).map(([key, value]) => `
     <tr>
@@ -339,8 +339,12 @@ export async function sendAdminNotification({ tenantId, to, subject, templateKey
       </tr>
     </table>
   `;
-  const promises = ADMIN_NOTIFICATION_EMAILS.map((email) =>
+  const promises = recipients.map((email) =>
     send({ tenantId, to: email, subject, html: emailLayout({ title, children, schoolName: data?.schoolName || 'Akademia' }), templateKey, retryPayload: data }),
   );
-  await Promise.all(promises);
+  const results = await Promise.allSettled(promises);
+  const failures = results.filter((r) => r.status === 'rejected');
+  if (failures.length > 0) {
+    throw new Error(`Admin notification: ${failures.length}/${results.length} emails failed`);
+  }
 }
