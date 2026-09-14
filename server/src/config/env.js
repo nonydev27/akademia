@@ -71,3 +71,25 @@ if (!parsed.success) {
 }
 
 export const env = Object.freeze(parsed.data);
+
+function extractRef(url) {
+  try {
+    const supabaseMatch = url.match(/https:\/\/(?<ref>[a-z0-9]+)\.supabase\.co/);
+    if (supabaseMatch) return supabaseMatch.groups.ref;
+    const dbMatch = url.match(/postgres\.(?<ref>[a-z0-9]+)(?=[:@])/);
+    if (dbMatch) return dbMatch.groups.ref;
+    return null;
+  } catch { return null; }
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  const dbRef   = extractRef(process.env.DATABASE_URL || '');
+  const supRef  = extractRef(process.env.SUPABASE_URL || '');
+  if (dbRef && supRef && dbRef !== supRef) {
+    console.error(
+      `\n✕ FATAL: DATABASE_URL points to project "${dbRef}" but SUPABASE_URL points to "${supRef}".\n` +
+      `  These must match. If you recently migrated, check that both env values were updated.\n`,
+    );
+    process.exit(1);
+  }
+}

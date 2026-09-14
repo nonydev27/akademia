@@ -15,6 +15,7 @@ const router = Router();
 router.use(requireAuth, attachTenant, requireActiveSubscription, requireFeature('terms'));
 
 router.get('/', controller.listTerms);
+router.post('/academic-years', requireRole('SCHOOL_ADMIN'), validate({ body: controller.createAcademicYearSchema }), controller.createAcademicYear);
 router.post('/', requireRole('SCHOOL_ADMIN'), validate({ body: controller.createTermSchema }), controller.createTerm);
 router.put('/:id', requireRole('SCHOOL_ADMIN'), validate({ body: controller.updateTermSchema }), controller.updateTerm);
 router.delete('/:id', requireRole('SCHOOL_ADMIN'), controller.deleteTerm);

@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import prisma from '../config/db.js';
 import { createTenantWithAdmin } from '../services/tenant.service.js';
+import { supabaseAdmin } from '../config/supabase.js';
 
 export const registerTenantSchema = z.object({
   schoolName:     z.string().min(2),
@@ -21,16 +23,14 @@ export async function registerTenant(req, res) {
 
 export async function me(req, res) {
   let tenantName = null;
+  let tenantSlogan = null;
   let features = {};
   if (req.user.tenantId) {
-    const tenant = await import('../config/db.js').then((m) =>
-      m.default.tenant.findUnique({ where: { id: req.user.tenantId }, select: { name: true } })
-    );
+    const tenant = await prisma.tenant.findUnique({ where: { id: req.user.tenantId }, select: { name: true, slogan: true } });
     tenantName = tenant?.name ?? null;
-    const sub = await import('../config/db.js').then((m) =>
-      m.default.subscription.findUnique({ where: { tenantId: req.user.tenantId }, select: { features: true } })
-    );
+    tenantSlogan = tenant?.slogan ?? null;
+    const sub = await prisma.subscription.findUnique({ where: { tenantId: req.user.tenantId }, select: { features: true } });
     features = sub?.features || {};
   }
-  res.json({ user: { ...req.user, tenantName, features } });
+  res.json({ user: { ...req.user, tenantName, tenantSlogan, features } });
 }

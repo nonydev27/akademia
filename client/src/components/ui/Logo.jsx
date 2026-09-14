@@ -1,37 +1,165 @@
 import { useId } from 'react';
 
-export default function Logo({ size = 40, className = '' }) {
-  const gradId = useId();
+/**
+ * Akademia Logo
+ * Clean rounded-square icon with a crisp mortarboard mark,
+ * paired with the "Akademia" wordmark and "School Management" sub-label.
+ *
+ * Props:
+ *   size      — icon box height in px (default 40)
+ *   showText  — show the wordmark beside the icon (default true)
+ *   dark      — true = white text (for dark backgrounds), false = dark text
+ *   className
+ */
+export default function Logo({ size = 40, showText = true, dark = true, className = '' }) {
+  const uid = useId().replace(/:/g, '');
+
+  const textScale   = size / 40;
+  const titleSize   = Math.round(16 * textScale);
+  const subtitleSize= Math.round(9  * textScale);
+  const gap         = Math.round(10 * textScale);
+  const titleColor  = dark ? '#ffffff' : '#0f172a';
+  const subColor    = dark ? '#94a3b8' : '#64748b';
 
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 40 40"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      role="img"
-      aria-label="Akademia"
-    >
-      <defs>
-        <linearGradient id={gradId} x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#2563eb" />
-          <stop offset="55%" stopColor="#7c3aed" />
-          <stop offset="100%" stopColor="#f59e0b" />
-        </linearGradient>
-      </defs>
-      <rect width="40" height="40" rx="11" fill={`url(#${gradId})`} />
-      {/* mortarboard top */}
-      <polygon points="20,10 31,15.5 20,21 9,15.5" fill="#fff" />
-      {/* head / band */}
-      <path
-        d="M13,17.3 L13,23 C13,25.5 16.1,27.6 20,27.6 C23.9,27.6 27,25.5 27,23 L27,17.3 L20,20.8 Z"
-        fill="#fff"
-        fillOpacity="0.92"
-      />
-      {/* tassel */}
-      <line x1="31" y1="15.5" x2="31" y2="21.5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
-      <circle cx="31" cy="23" r="1.8" fill="#fde68a" />
-    </svg>
+    <div className={`inline-flex items-center select-none ${className}`} style={{ gap }}>
+
+      {/* ── Icon mark ── */}
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 40 40"
+        xmlns="http://www.w3.org/2000/svg"
+        role="img"
+        aria-label="Akademia"
+        style={{ flexShrink: 0 }}
+      >
+        <defs>
+          {/* Background: deep blue-indigo */}
+          <linearGradient id={`bg-${uid}`} x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+            <stop offset="0%"   stopColor="#1e3a8a" />
+            <stop offset="100%" stopColor="#312e81" />
+          </linearGradient>
+
+          {/* Mortarboard top face */}
+          <linearGradient id={`cap-${uid}`} x1="0" y1="0" x2="40" y2="20" gradientUnits="userSpaceOnUse">
+            <stop offset="0%"   stopColor="#ffffff" />
+            <stop offset="100%" stopColor="#e0e7ff" />
+          </linearGradient>
+
+          {/* Tassel bobble */}
+          <linearGradient id={`tassel-${uid}`} x1="0" y1="0" x2="6" y2="6" gradientUnits="userSpaceOnUse">
+            <stop offset="0%"   stopColor="#fcd34d" />
+            <stop offset="100%" stopColor="#f59e0b" />
+          </linearGradient>
+
+          {/* Subtle inner top-left highlight */}
+          <radialGradient id={`shine-${uid}`} cx="25%" cy="20%" r="60%">
+            <stop offset="0%"   stopColor="#ffffff" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0"    />
+          </radialGradient>
+        </defs>
+
+        {/* Rounded square base */}
+        <rect width="40" height="40" rx="10" fill={`url(#bg-${uid})`} />
+
+        {/* Subtle inner highlight */}
+        <rect width="40" height="40" rx="10" fill={`url(#shine-${uid})`} />
+
+        {/* Thin inner border for depth */}
+        <rect x="0.75" y="0.75" width="38.5" height="38.5" rx="9.5"
+              fill="none" stroke="#ffffff" strokeWidth="0.5" strokeOpacity="0.12" />
+
+        {/* ── Mortarboard flat top (diamond) ── */}
+        <polygon
+          points="20,9 30,13.8 20,18.6 10,13.8"
+          fill={`url(#cap-${uid})`}
+        />
+        {/* Thin outline on top face */}
+        <polygon
+          points="20,9 30,13.8 20,18.6 10,13.8"
+          fill="none" stroke="#ffffff" strokeWidth="0.5" strokeOpacity="0.4"
+        />
+
+        {/* ── Dome / brim beneath the flat top ── */}
+        <path
+          d="M13,15 L13,20.5 C13,23.3 16.1,25.6 20,25.6 C23.9,25.6 27,23.3 27,20.5 L27,15 L20,18.6 Z"
+          fill="#ffffff"
+          fillOpacity="0.9"
+        />
+        {/* Subtle shadow on the underside of dome */}
+        <path
+          d="M13,15 L13,20.5 C13,23.3 16.1,25.6 20,25.6 C23.9,25.6 27,23.3 27,20.5 L27,15 L20,18.6 Z"
+          fill="none"
+          stroke="#c7d2fe"
+          strokeWidth="0.4"
+          strokeOpacity="0.6"
+        />
+
+        {/* ── Tassel string ── */}
+        <line
+          x1="30" y1="13.8" x2="30" y2="20"
+          stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.85"
+        />
+
+        {/* Tassel knot */}
+        <circle cx="30" cy="21.2" r="1.8" fill={`url(#tassel-${uid})`} />
+
+        {/* Tassel fringe (3 lines) */}
+        <line x1="28.8" y1="23" x2="28.8" y2="27" stroke="#fcd34d" strokeWidth="0.9" strokeLinecap="round" strokeOpacity="0.9" />
+        <line x1="30"   y1="23" x2="30"   y2="27" stroke="#fcd34d" strokeWidth="0.9" strokeLinecap="round" strokeOpacity="0.9" />
+        <line x1="31.2" y1="23" x2="31.2" y2="27" stroke="#fcd34d" strokeWidth="0.9" strokeLinecap="round" strokeOpacity="0.9" />
+
+        {/* ── Book / open pages at the bottom ── */}
+        {/* Spine */}
+        <rect x="19.3" y="27.5" width="1.4" height="7" rx="0.6"
+              fill="#ffffff" fillOpacity="0.85" />
+        {/* Left page */}
+        <path
+          d="M19.3,28 C16,27.5 13,28.5 12,29.5 L12,34.5 C13.2,33.5 16.2,32.8 19.3,33.3 Z"
+          fill="#ffffff" fillOpacity="0.55"
+        />
+        {/* Right page */}
+        <path
+          d="M20.7,28 C24,27.5 27,28.5 28,29.5 L28,34.5 C26.8,33.5 23.8,32.8 20.7,33.3 Z"
+          fill="#ffffff" fillOpacity="0.55"
+        />
+        {/* Page lines (left) */}
+        <line x1="13.5" y1="30.5" x2="18.5" y2="30.2" stroke="#6366f1" strokeWidth="0.5" strokeOpacity="0.5" strokeLinecap="round" />
+        <line x1="13.5" y1="31.8" x2="18.5" y2="31.5" stroke="#6366f1" strokeWidth="0.5" strokeOpacity="0.5" strokeLinecap="round" />
+        <line x1="13.5" y1="33.1" x2="18.5" y2="32.8" stroke="#6366f1" strokeWidth="0.5" strokeOpacity="0.5" strokeLinecap="round" />
+        {/* Page lines (right) */}
+        <line x1="26.5" y1="30.5" x2="21.5" y2="30.2" stroke="#6366f1" strokeWidth="0.5" strokeOpacity="0.5" strokeLinecap="round" />
+        <line x1="26.5" y1="31.8" x2="21.5" y2="31.5" stroke="#6366f1" strokeWidth="0.5" strokeOpacity="0.5" strokeLinecap="round" />
+        <line x1="26.5" y1="33.1" x2="21.5" y2="32.8" stroke="#6366f1" strokeWidth="0.5" strokeOpacity="0.5" strokeLinecap="round" />
+      </svg>
+
+      {/* ── Wordmark ── */}
+      {showText && (
+        <div style={{ lineHeight: 1, userSelect: 'none' }}>
+          <div style={{
+            fontSize: titleSize,
+            fontWeight: 800,
+            letterSpacing: '-0.02em',
+            color: titleColor,
+            fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+            lineHeight: 1.1,
+          }}>
+            Akademia
+          </div>
+          <div style={{
+            fontSize: subtitleSize,
+            fontWeight: 500,
+            letterSpacing: '0.07em',
+            color: subColor,
+            textTransform: 'uppercase',
+            marginTop: 2,
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            School Management
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

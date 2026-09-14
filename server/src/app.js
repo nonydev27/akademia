@@ -6,10 +6,12 @@ import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 
+import { env } from './config/env.js';
+import logger from './utils/logger.js';
 import authRoutes         from './routes/auth.routes.js';
-import passwordResetRoutes from './routes/passwordReset.routes.js';
 import tenantRoutes       from './routes/tenant.routes.js';
 import studentRoutes      from './routes/student.routes.js';
 import attendanceRoutes   from './routes/attendance.routes.js';
@@ -25,11 +27,33 @@ import gradeBandRoutes   from './routes/gradeBands.routes.js';
 import termRoutes         from './routes/term.routes.js';
 import profileRoutes      from './routes/profile.routes.js';
 import importRoutes       from './routes/import.routes.js';
+import passwordResetRoutes from './routes/passwordReset.routes.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", process.env.CLIENT_URL || 'http://localhost:5173'],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later' },
+});
+app.use('/api/v1/', limiter);
+
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 
 // Paystack webhook needs raw body for signature verification
@@ -43,7 +67,14 @@ app.use('/api/v1/subscriptions/webhook', express.raw({ type: '*/*' }));
 app.use(express.json({ limit: '20mb' }));
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.use('/health', (req, res) => res.json({ status: 'ok' }));
+
+app.use((req, res, next) => {
+  req.id = req.headers['x-request-id'] || crypto.randomUUID();
+  res.setHeader('X-Request-Id', req.id);
+  res.locals.requestId = req.id;
+  next();
+});
 
 app.use('/api/v1/auth',           authRoutes);
 app.use('/api/v1/auth',           passwordResetRoutes);

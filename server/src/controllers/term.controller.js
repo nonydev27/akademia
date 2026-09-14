@@ -49,6 +49,25 @@ export async function listTerms(req, res) {
   });
 }
 
+export const createAcademicYearSchema = z.object({
+  label: z.string().min(2, 'Label must be at least 2 characters'),
+});
+
+export async function createAcademicYear(req, res) {
+  const { label } = req.body;
+
+  const existing = await prisma.academicYear.findFirst({
+    where: { tenantId: req.tenantId, label },
+  });
+  if (existing) throw ApiError.badRequest('An academic year with that label already exists');
+
+  const academicYear = await prisma.academicYear.create({
+    data: { tenantId: req.tenantId, label },
+  });
+
+  res.status(201).json({ academicYear });
+}
+
 export const createTermSchema = z.object({
   academicYearId: z.string(),
   label: z.string().min(1),
@@ -67,13 +86,13 @@ export async function createTerm(req, res) {
 
   if (status === 'ACTIVE') {
     await prisma.term.updateMany({
-      where: { tenantId: req.tenantId, status: 'ACTIVE' },
+      where: { academicYear: { tenantId: req.tenantId }, status: 'ACTIVE' },
       data: { status: 'INACTIVE' },
     });
   }
 
   const term = await prisma.term.create({
-    data: { academicYearId, label, status, startDate, endDate, tenantId: req.tenantId },
+    data: { academicYearId, label, status, startDate, endDate },
   });
 
   res.status(201).json({ term });
@@ -89,7 +108,7 @@ export const updateTermSchema = z.object({
 export async function updateTerm(req, res) {
   const { id } = req.params;
   const term = await prisma.term.findFirst({
-    where: { id, tenantId: req.tenantId },
+    where: { id, academicYear: { tenantId: req.tenantId } },
   });
   if (!term) throw ApiError.notFound('Term not found');
 
@@ -98,7 +117,7 @@ export async function updateTerm(req, res) {
   if (req.body.status !== undefined) {
     if (req.body.status === 'ACTIVE') {
       await prisma.term.updateMany({
-        where: { tenantId: req.tenantId, status: 'ACTIVE', NOT: { id } },
+        where: { academicYear: { tenantId: req.tenantId }, status: 'ACTIVE', NOT: { id } },
         data: { status: 'INACTIVE' },
       });
     }
@@ -114,7 +133,7 @@ export async function updateTerm(req, res) {
 export async function deleteTerm(req, res) {
   const { id } = req.params;
   const term = await prisma.term.findFirst({
-    where: { id, tenantId: req.tenantId },
+    where: { id, academicYear: { tenantId: req.tenantId } },
   });
   if (!term) throw ApiError.notFound('Term not found');
 

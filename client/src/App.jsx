@@ -7,6 +7,7 @@ import Login             from './pages/Auth/Login';
 import ForgotPassword   from './pages/Auth/ForgotPassword';
 import ResetPassword    from './pages/Auth/ResetPassword';
 import NotFound         from './pages/NotFound';
+import CommunicationSend from './pages/SchoolAdmin/CommunicationSend';
 
 // Super Admin
 import TenantsDashboard  from './pages/SuperAdmin/TenantsDashboard';
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="/admin/results"        element={<PublishResults />} />
           <Route path="/admin/terms"          element={<Terms />} />
           <Route path="/admin/communications" element={<Communications />} />
+          <Route path="/admin/communications/send" element={<CommunicationSend />} />
           <Route path="/admin/subscription"   element={<Subscription />} />
           <Route path="/admin/profile"        element={<AdminProfile />} />
         </Route>

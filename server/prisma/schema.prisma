@@ -65,6 +65,7 @@ model Tenant {
   code         String      @unique // school initials, e.g. VIS for Vilaworld International School
   studentSeq   Int         @default(0) // last used student number -> builds VIS-001, VIS-002…
   schoolLevel  SchoolLevel
+  slogan       String?
   adminPhone   String?
   adminContact String?
   createdAt    DateTime    @default(now())
@@ -365,6 +366,7 @@ model Payment {
   amount    Float
   reference String            @unique
   validated Boolean           @default(false)
+  note      String?
   paidAt    DateTime          @default(now())
 
   @@index([accountId])

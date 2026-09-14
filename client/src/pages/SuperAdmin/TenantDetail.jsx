@@ -9,7 +9,7 @@ import Modal       from '../../components/ui/Modal';
 import Input       from '../../components/ui/Input';
 import PlanPicker  from '../../components/ui/PlanPicker';
 import { PLAN_LIST, FEATURE_LABELS, planById, detectPlan } from '../../config/plans';
-import { ArrowLeft, School, KeyRound, Users, UserRound, UserPlus, Save } from 'lucide-react';
+import { ArrowLeft, School, KeyRound, Users, UserRound, UserPlus, Save, BarChart3, Wallet, ClipboardCheck, GraduationCap, Users2, Mail, Phone, FileText, AlertTriangle, Lock, TrendingUp, Activity, FileSpreadsheet, Award } from 'lucide-react';
 
 const FEATURES = Object.keys(FEATURE_LABELS).map((key) => ({ key, label: FEATURE_LABELS[key] }));
 
@@ -26,6 +26,9 @@ export default function TenantDetail() {
   const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [planForm, setPlanForm]   = useState('BASIC');
   const [savingPlan, setSavingPlan] = useState(false);
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [infoForm, setInfoForm]     = useState({ name: '', schoolLevel: 'JHS', slogan: '' });
+  const [metrics, setMetrics]       = useState(null);
 
   useEffect(() => { fetchTenant(); }, [id]);
 
@@ -50,6 +53,17 @@ export default function TenantDetail() {
         terms:      true,
         subjects:   true,
         ...feats,
+      });
+      setInfoForm({ name: t.name, schoolLevel: t.schoolLevel, slogan: t.slogan || '' });
+      setMetrics({
+        students:       t._count?.students ?? 0,
+        users:          t._count?.users ?? 0,
+        classes:        t._count?.classes ?? 0,
+        subjects:       t._count?.subjects ?? 0,
+        academicYears:  t._count?.academicYears ?? 0,
+        guardians:      t._count?.guardians ?? 0,
+        feeStructures:  t._count?.feeStructures ?? 0,
+        communications: t._count?.communications ?? 0,
       });
     } catch {
       toast.error('Failed to load school');
@@ -83,6 +97,19 @@ export default function TenantDetail() {
     } finally {
       setSavingPlan(false);
     }
+  }
+
+  async function handleSaveInfo(e) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await tenantsApi.update(id, { name: infoForm.name, schoolLevel: infoForm.schoolLevel });
+      toast.success('School info updated');
+      fetchTenant();
+      setEditingInfo(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Update failed');
+    } finally { setSaving(false); }
   }
 
   async function saveFeatures(e) {
@@ -160,29 +187,115 @@ export default function TenantDetail() {
         </div>
       </div>
 
+      {/* Metrics */}
+      {metrics && (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 animate-fade-in-up">
+          <div className="card p-4 text-center">
+            <Users className="w-5 h-5 mx-auto text-brand-600 mb-1" />
+            <div className="text-xl font-bold text-slate-800">{metrics.students}</div>
+            <div className="text-xs text-slate-400 uppercase">Students</div>
+          </div>
+          <div className="card p-4 text-center">
+            <UserRound className="w-5 h-5 mx-auto text-emerald-600 mb-1" />
+            <div className="text-xl font-bold text-slate-800">{metrics.users}</div>
+            <div className="text-xs text-slate-400 uppercase">Staff</div>
+          </div>
+          <div className="card p-4 text-center">
+            <BarChart3 className="w-5 h-5 mx-auto text-blue-600 mb-1" />
+            <div className="text-xl font-bold text-slate-800">{metrics.classes}</div>
+            <div className="text-xs text-slate-400 uppercase">Classes</div>
+          </div>
+          <div className="card p-4 text-center">
+            <GraduationCap className="w-5 h-5 mx-auto text-pink-600 mb-1" />
+            <div className="text-xl font-bold text-slate-800">{metrics.subjects}</div>
+            <div className="text-xs text-slate-400 uppercase">Subjects</div>
+          </div>
+          <div className="card p-4 text-center">
+            <Activity className="w-5 h-5 mx-auto text-teal-600 mb-1" />
+            <div className="text-xl font-bold text-slate-800">{metrics.academicYears}</div>
+            <div className="text-xs text-slate-400 uppercase">Academic Yrs</div>
+          </div>
+          <div className="card p-4 text-center">
+            <FileSpreadsheet className="w-5 h-5 mx-auto text-amber-600 mb-1" />
+            <div className="text-xl font-bold text-slate-800">{metrics.feeStructures}</div>
+            <div className="text-xs text-slate-400 uppercase">Fee Schedules</div>
+          </div>
+          <div className="card p-4 text-center">
+            <ClipboardCheck className="w-5 h-5 mx-auto text-purple-600 mb-1" />
+            <div className="text-xl font-bold text-slate-800">{metrics.guardians}</div>
+            <div className="text-xs text-slate-400 uppercase">Guardians</div>
+          </div>
+          <div className="card p-4 text-center">
+            <Mail className="w-5 h-5 mx-auto text-orange-600 mb-1" />
+            <div className="text-xl font-bold text-slate-800">{metrics.communications}</div>
+            <div className="text-xs text-slate-400 uppercase">Messages</div>
+          </div>
+        </div>
+      )}
+
       {/* Info + Subscription grid */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* School Info */}
         <div className="card p-6 animate-fade-in-up">
-          <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><School className="w-4 h-4" /> School Info</h2>
-          <dl className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Name</dt>
-              <dd className="font-semibold text-slate-800">{tenant.name}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Level</dt>
-              <dd><StatusBadge status={tenant.schoolLevel} /></dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Students</dt>
-              <dd className="font-semibold text-slate-800">{tenant._count?.students ?? '—'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Users</dt>
-              <dd className="font-semibold text-slate-800">{tenant.users?.length ?? '—'}</dd>
-            </div>
-          </dl>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-slate-800 flex items-center gap-2"><School className="w-4 h-4" /> School Info</h2>
+            <Button size="sm" variant="secondary" onClick={() => {
+              setInfoForm({ name: tenant.name, schoolLevel: tenant.schoolLevel, slogan: tenant.slogan || '' });
+              setEditingInfo(true);
+            }}>
+              {editingInfo ? <Save className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
+              {editingInfo ? 'Save' : 'Edit'}
+            </Button>
+          </div>
+          {editingInfo ? (
+            <form onSubmit={handleSaveInfo} className="space-y-4">
+              <div>
+                <label className="label">School Name</label>
+                <Input value={infoForm.name} onChange={(e) => setInfoForm({ ...infoForm, name: e.target.value })} required />
+              </div>
+              <div>
+                <label className="label">School Level</label>
+                <select className="input" value={infoForm.schoolLevel}
+                  onChange={(e) => setInfoForm({ ...infoForm, schoolLevel: e.target.value })}>
+                  <option value="PRIMARY">Primary</option>
+                  <option value="JHS">Junior High (JHS)</option>
+                  <option value="SHS">Senior High (SHS)</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Slogan <span className="text-slate-400 font-normal">(optional)</span></label>
+                <Input value={infoForm.slogan} onChange={(e) => setInfoForm({ ...infoForm, slogan: e.target.value })}
+                  placeholder="e.g. Excellence in Education" maxLength={200} />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" variant="primary" size="sm" loading={saving}>Save</Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setEditingInfo(false)}>Cancel</Button>
+              </div>
+            </form>
+          ) : (
+            <dl className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-slate-500">Name</dt>
+                <dd className="font-semibold text-slate-800">{tenant.name}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-slate-500">Level</dt>
+                <dd><StatusBadge status={tenant.schoolLevel} /></dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-slate-500">Slogan</dt>
+                <dd className="font-medium text-slate-600 italic">{tenant.slogan || <span className="text-slate-300 not-italic">—</span>}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-slate-500">Students</dt>
+                <dd className="font-semibold text-slate-800">{tenant._count?.students ?? '—'}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-slate-500">Users</dt>
+                <dd className="font-semibold text-slate-800">{tenant.users?.length ?? '—'}</dd>
+              </div>
+            </dl>
+          )}
         </div>
 
         {/* Subscription */}

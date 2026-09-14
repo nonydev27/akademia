@@ -48,16 +48,17 @@ export const recordPaymentSchema = z.object({
   studentId: z.string(),
   amount: z.number().positive(),
   reference: z.string().min(3),
+  note: z.string().max(500).optional(),
 });
 
 export async function createPayment(req, res) {
-  const { studentId, amount, reference } = req.body;
+  const { studentId, amount, reference, note } = req.body;
   await assertTenantStudent(req.tenantId, studentId);
 
   const existing = await prisma.payment.findUnique({ where: { reference } });
   if (existing) throw ApiError.badRequest('A payment with that reference already exists');
 
-  const { payment, balance } = await recordPayment({ studentId, amount, reference });
+  const { payment, balance } = await recordPayment({ studentId, amount, reference, note });
   res.status(201).json({ payment, balance });
 }
 

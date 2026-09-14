@@ -104,8 +104,7 @@ export default function Login() {
 
         {/* Brand */}
         <div className="relative z-10 flex items-center gap-3 animate-fade-in">
-          <Logo size={44} className="shadow-glow-blue rounded-2xl" />
-          <span className="text-xl font-extrabold text-white tracking-tight">Akademia</span>
+          <Logo size={48} showText={true} dark={true} />
         </div>
 
         {/* Headline + features */}
@@ -147,8 +146,7 @@ export default function Login() {
 
           {/* Mobile-only brand */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
-            <Logo size={40} />
-            <span className="text-lg font-extrabold text-slate-900 tracking-tight">Akademia</span>
+            <Logo size={40} showText={true} dark={false} />
           </div>
 
           <div className="mb-8">

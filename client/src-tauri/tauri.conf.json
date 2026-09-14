@@ -2,7 +2,7 @@
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Akademia",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.akademia.schoolmgmt",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -12,11 +12,15 @@
   "app": {
     "windows": [
       {
-        "title": "Akademia - Multi-Tenant School Management System",
-        "width": 800,
-        "height": 600,
+        "label": "main",
+        "title": "Akademia — School Management System",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 640,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "center": true
       }
     ],
     "security": {
@@ -28,13 +32,27 @@
     "targets": "all",
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/icon.png"
     ],
-    "android": {
-      "debugApplicationIdSuffix": ".debug"
+    "windows": {
+      "wix": {},
+      "nsis": {}
+    },
+    "resources": [],
+    "externalBin": [],
+    "copyright": "",
+    "category": "Education",
+    "shortDescription": "Multi-tenant school management platform",
+    "longDescription": "Akademia is a multi-tenant school management system for Primary, JHS, and SHS schools. It covers attendance, fees, grading, automated result-fee intercept, communications, and per-school subscription licensing.",
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": true
+      }
     }
   }
 }

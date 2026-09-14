@@ -12,6 +12,7 @@ import { useAuth }   from '../../context/AuthContext';
 import {
   Plus, Search, X, Users, UserCircle,
   GraduationCap, Trophy, IdCard, Eye, ChevronRight, ChevronLeft, Pencil, Camera, Sparkles,
+  Trash2, AlertTriangle, CheckSquare2,
 } from 'lucide-react';
 
 const NATIONALITIES = [
@@ -71,6 +72,11 @@ export default function Students() {
   const [editValue,      setEditValue]      = useState('');
   const [savingEdit,     setSavingEdit]     = useState(false);
 
+  const [selectedIds,    setSelectedIds]    = useState(new Set());
+  const [bulkDeleting,   setBulkDeleting]   = useState(false);
+  const [duplicates,     setDuplicates]     = useState([]);
+  const [checkingDup,    setCheckingDup]    = useState(false);
+
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
@@ -97,10 +103,59 @@ export default function Students() {
     finally { setDetailLoading(false); }
   }
 
+  function toggleSelect(id, e) {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === students.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(students.map((s) => s.id)));
+    }
+  }
+
+  async function handleBulkDelete() {
+    const ids = [...selectedIds];
+    if (!window.confirm(`Permanently delete ${ids.length} student${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    try {
+      await studentsApi.bulkDelete(ids);
+      toast.success(`${ids.length} student${ids.length > 1 ? 's' : ''} deleted`);
+      setSelectedIds(new Set());
+      fetchStudents();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Bulk delete failed');
+    } finally { setBulkDeleting(false); }
+  }
+
+  // Debounced duplicate check — fires when fullName has 2+ chars
+  useEffect(() => {
+    if (!showAdd || form.fullName.trim().length < 2) { setDuplicates([]); return; }
+    const t = setTimeout(async () => {
+      setCheckingDup(true);
+      try {
+        const res = await studentsApi.checkDuplicate({
+          fullName: form.fullName.trim(),
+          dateOfBirth: form.dateOfBirth || undefined,
+        });
+        setDuplicates(res.data.duplicates || []);
+      } catch { /* non-fatal */ }
+      finally { setCheckingDup(false); }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [form.fullName, form.dateOfBirth, showAdd]);
+
   async function openAdd() {
     setForm(EMPTY_FORM);
     setAdmissionNumber('');
     setStep(0);
+    setDuplicates([]);
     setShowAdd(true);
     try {
       const res = await studentsApi.get('next-student-id');
@@ -145,7 +200,20 @@ export default function Students() {
     } finally { setSavingEdit(false); }
   }
 
+  const allOnPageSelected = students.length > 0 && students.every((s) => selectedIds.has(s.id));
+
   const columns = [
+    { key: 'id', label: (
+        <input type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAll}
+          className="w-4 h-4 rounded text-brand-600 cursor-pointer" />
+      ),
+      render: (id) => (
+        <input type="checkbox" checked={selectedIds.has(id)}
+          onChange={(e) => toggleSelect(id, e)}
+          onClick={(e) => e.stopPropagation()}
+          className="w-4 h-4 rounded text-brand-600 cursor-pointer" />
+      ),
+    },
     { key: 'admissionNumber', label: 'Adm. No.' },
     { key: 'fullName', label: 'Name',
       render: (v, row) => (
@@ -197,6 +265,21 @@ export default function Students() {
         </div>
       </div>
 
+      {/* Bulk action toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl animate-fade-in-up">
+          <CheckSquare2 className="w-4 h-4 text-red-500" />
+          <span className="text-sm font-semibold text-red-700">{selectedIds.size} student{selectedIds.size > 1 ? 's' : ''} selected</span>
+          <Button size="sm" variant="outline" loading={bulkDeleting} onClick={handleBulkDelete}
+            className="ml-auto text-red-600 border-red-300 hover:bg-red-100">
+            <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="text-slate-500">
+            <X className="w-3.5 h-3.5" /> Clear
+          </Button>
+        </div>
+      )}
+
       <div className="card p-5 animate-fade-in-up">
         <DataTable columns={columns} data={students} loading={loading} total={total}
           page={page} pageSize={20} onPageChange={setPage}
@@ -234,6 +317,24 @@ export default function Students() {
         {/* Step 0: Personal */}
         {step === 0 && (
           <div className="space-y-4">
+            {/* Duplicate warning */}
+            {duplicates.length > 0 && (
+              <div className="flex gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Possible duplicate{duplicates.length > 1 ? 's' : ''} found</p>
+                  <p className="text-xs text-amber-700 mb-1">A student with a similar name already exists:</p>
+                  {duplicates.map((d) => (
+                    <p key={d.id} className="text-xs text-amber-700 font-medium">
+                      {d.fullName} · {d.admissionNumber}
+                      {d.enrollments?.[0]?.class?.name ? ` · ${d.enrollments[0].class.name}` : ''}
+                      {d.dateOfBirth ? ` · ${new Date(d.dateOfBirth).toLocaleDateString()}` : ''}
+                    </p>
+                  ))}
+                  <p className="text-xs text-amber-600 mt-1">You can still proceed if this is a different student.</p>
+                </div>
+              </div>
+            )}
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Student ID</label>

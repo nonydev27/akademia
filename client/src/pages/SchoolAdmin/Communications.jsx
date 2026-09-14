@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { communicationsApi } from '../../api/communications';
+import CommunicationSend from './CommunicationSend';
 import DataTable   from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Button      from '../../components/ui/Button';
-import { Inbox, Mail, Smartphone, XCircle, RefreshCw } from 'lucide-react';
+import { Inbox, Mail, Smartphone, XCircle, RefreshCw, Send } from 'lucide-react';
 
 const FILTERS = [
   { label: 'All',    Icon: Inbox },
@@ -20,6 +21,7 @@ export default function Communications() {
   const [page, setPage]   = useState(1);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState({});
+  const [showCompose, setShowCompose] = useState(false);
 
   useEffect(() => { fetchData(); }, [tab, page]); // eslint-disable-line
 
@@ -75,7 +77,17 @@ export default function Communications() {
           <h1 className="page-title">Communications</h1>
           <p className="page-subtitle">Email and SMS delivery log</p>
         </div>
+        <Button variant="primary" onClick={() => setShowCompose(true)}>
+          <Send className="w-4 h-4" /> Send
+        </Button>
       </div>
+
+      {showCompose && (
+        <CommunicationSend
+          onSent={() => { setShowCompose(false); fetchData(); }}
+          onClose={() => setShowCompose(false)}
+        />
+      )}
 
       <div className="tab-bar">
         {FILTERS.map((f, i) => (

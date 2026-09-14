@@ -8,6 +8,8 @@ import { ApiError } from '../utils/ApiError.js';
 import { createTenantWithAdmin, provisionTenantAdmin } from '../services/tenant.service.js';
 import { invalidateCached } from '../middleware/subscription.middleware.js';
 import { PLAN_LIST, planFeatures, isValidPlan } from '../config/plans.js';
+import { supabaseAdmin } from '../config/supabase.js';
+import logger from '../utils/logger.js';
 
 export const createTenantSchema = z.object({
   schoolName: z.string().min(2),
@@ -43,7 +45,22 @@ export async function list(req, res) {
 export async function getById(req, res) {
   const tenant = await prisma.tenant.findUnique({
     where: { id: req.params.id },
-    include: { subscription: true, users: { select: { id: true, fullName: true, email: true, role: true } } },
+    include: {
+      subscription: true,
+      users: { select: { id: true, fullName: true, email: true, role: true } },
+      _count: {
+        select: {
+          students: true,
+          users: true,
+          academicYears: true,
+          classes: true,
+          subjects: true,
+          guardians: true,
+          feeStructures: true,
+          communications: true,
+        },
+      },
+    },
   });
   if (!tenant) throw ApiError.notFound('Tenant not found');
   res.json({ tenant });
@@ -52,6 +69,7 @@ export async function getById(req, res) {
 export const updateTenantSchema = z.object({
   name: z.string().min(2).optional(),
   schoolLevel: z.enum(['PRIMARY', 'JHS', 'SHS']).optional(),
+  slogan: z.string().max(200).optional(),
 });
 
 export async function update(req, res) {

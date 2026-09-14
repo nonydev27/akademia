@@ -10,7 +10,7 @@ import Button        from '../../components/ui/Button';
 import Input         from '../../components/ui/Input';
 import PlanPicker    from '../../components/ui/PlanPicker';
 import { planById }  from '../../config/plans';
-import { School, CheckCircle2, AlertTriangle, Lock, ArrowRight, Plus } from 'lucide-react';
+import { School, CheckCircle2, AlertTriangle, Lock, ArrowRight, Plus, Users, GraduationCap, TrendingUp, Clock, Activity, FileSpreadsheet, Mail, BarChart3 } from 'lucide-react';
 
 export default function TenantsDashboard() {
   const navigate = useNavigate();
@@ -43,12 +43,23 @@ export default function TenantsDashboard() {
     t.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const stats = {
-    total:   tenants.length,
-    active:  tenants.filter((t) => t.subscription?.status === 'ACTIVE').length,
-    grace:   tenants.filter((t) => t.subscription?.status === 'EXPIRED_IN_GRACE').length,
-    locked:  tenants.filter((t) => t.subscription?.status === 'EXPIRED_LOCKED').length,
-  };
+  const totalStudents  = tenants.reduce((s, t) => s + (t._count?.students ?? 0), 0);
+  const totalStaff     = tenants.reduce((s, t) => s + (t._count?.users ?? 0), 0);
+  const totalClasses   = tenants.reduce((s, t) => s + (t._count?.classes ?? 0), 0);
+  const totalSubjects  = tenants.reduce((s, t) => s + (t._count?.subjects ?? 0), 0);
+  const totalComm      = tenants.reduce((s, t) => s + (t._count?.communications ?? 0), 0);
+  const active         = tenants.filter((t) => t.subscription?.status === 'ACTIVE').length;
+  const grace          = tenants.filter((t) => t.subscription?.status === 'EXPIRED_IN_GRACE').length;
+  const locked         = tenants.filter((t) => t.subscription?.status === 'EXPIRED_LOCKED').length;
+  const basicCount     = tenants.filter((t) => t.subscription?.plan === 'BASIC').length;
+  const standardCount  = tenants.filter((t) => t.subscription?.plan === 'STANDARD').length;
+  const premiumCount   = tenants.filter((t) => t.subscription?.plan === 'PREMIUM').length;
+  const expiringSoon   = tenants.filter((t) => {
+    if (!t.subscription?.expiresAt) return false;
+    const days = Math.ceil((new Date(t.subscription.expiresAt) - Date.now()) / 86400000);
+    return days >= 0 && days <= 14;
+  }).length;
+  const recent         = [...tenants].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
 
   async function handleAdd(e) {
     e.preventDefault();
@@ -99,42 +110,93 @@ export default function TenantsDashboard() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Schools Dashboard</h1>
-          <p className="page-subtitle">Manage all school tenants and subscriptions</p>
+          <p className="page-subtitle">Overview of all school tenants and their activity</p>
         </div>
         <Button variant="primary" onClick={() => setShowAdd(true)}>
           <Plus className="w-4 h-4" /> Add School
         </Button>
       </div>
 
-      {/* Stats */}
+      {/* Key Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
-        <StatCard icon={<School />} label="Total Schools"    value={stats.total}  color="blue"   loading={loading} />
-        <StatCard icon={<CheckCircle2 />} label="Active"           value={stats.active} color="green"  loading={loading} />
-        <StatCard icon={<AlertTriangle />} label="Grace Period"    value={stats.grace}  color="gold"   loading={loading} />
-        <StatCard icon={<Lock />} label="Locked"           value={stats.locked} color="red"    loading={loading} />
+        <StatCard icon={<School />}         label="Total Schools"   value={tenants.length}                  color="blue"   loading={loading} sub="registered" />
+        <StatCard icon={<Users />}          label="Total Students"  value={totalStudents}                   color="green"  loading={loading} sub="across all schools" />
+        <StatCard icon={<GraduationCap />}  label="Total Staff"     value={totalStaff}                      color="purple" loading={loading} sub="across all schools" />
+        <StatCard icon={<TrendingUp />}     label="Active"           value={active}                          color="emerald" loading={loading} sub={`${grace} grace · ${locked} locked`} />
       </div>
 
-      {/* Table */}
-      <div className="card p-5 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-slate-800">All Schools</h2>
-          <input
-            className="input max-w-xs"
-            placeholder="Search schools…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+      {/* Activity Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+        <StatCard icon={<BarChart3 />}       label="Classes"      value={totalClasses}           color="blue"   loading={loading} sub="enrolled" />
+        <StatCard icon={<Activity />}        label="Subjects"     value={totalSubjects}          color="pink"   loading={loading} sub="taught" />
+        <StatCard icon={<Mail />}            label="Messages"     value={totalComm}              color="orange" loading={loading} sub="sent" />
+        <StatCard icon={<Clock />}           label="Expiring Soon" value={expiringSoon}          color="gold"   loading={loading} sub="within 14 days" />
+      </div>
+
+      {/* Plan Distribution */}
+      <div className="card p-6 animate-fade-in-up">
+        <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><FileSpreadsheet className="w-4 h-4" /> Subscription Distribution</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center p-4 bg-blue-50 rounded-xl">
+            <div className="text-2xl font-bold text-blue-700">{basicCount}</div>
+            <div className="text-sm text-blue-500 font-medium">Basic</div>
+          </div>
+          <div className="text-center p-4 bg-emerald-50 rounded-xl">
+            <div className="text-2xl font-bold text-emerald-700">{standardCount}</div>
+            <div className="text-sm text-emerald-500 font-medium">Standard</div>
+          </div>
+          <div className="text-center p-4 bg-purple-50 rounded-xl">
+            <div className="text-2xl font-bold text-purple-700">{premiumCount}</div>
+            <div className="text-sm text-purple-500 font-medium">Premium</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Schools + Table */}
+      <div className="grid md:grid-cols-3 gap-6">
+        <div className="card p-5 animate-fade-in-up md:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-slate-800">All Schools</h2>
+            <input
+              className="input max-w-xs"
+              placeholder="Search schools…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <DataTable
+            columns={columns}
+            data={filtered}
+            loading={loading}
+            emptyMessage="No schools found"
+            emptyIcon={<School className="w-12 h-12" />}
+            total={filtered.length}
+            pageSize={20}
+            onRowClick={(row) => navigate(`/super-admin/schools/${row.id}`)}
           />
         </div>
-        <DataTable
-          columns={columns}
-          data={filtered}
-          loading={loading}
-          emptyMessage="No schools found"
-          emptyIcon={<School className="w-12 h-12" />}
-          total={filtered.length}
-          pageSize={20}
-          onRowClick={(row) => navigate(`/super-admin/schools/${row.id}`)}
-        />
+
+        <div className="card p-5 animate-fade-in-up">
+          <h2 className="font-bold text-slate-800 mb-4">Recent Activity</h2>
+          {recent.length === 0 ? (
+            <p className="text-sm text-slate-400">No recent schools</p>
+          ) : (
+            <div className="space-y-3">
+              {recent.map((t) => (
+                <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors"
+                  onClick={() => navigate(`/super-admin/schools/${t.id}`)}>
+                  <div>
+                    <div className="text-sm font-medium text-slate-800">{t.name}</div>
+                    <div className="text-xs text-slate-400">
+                      {(t._count?.students ?? 0)} students · {(t._count?.users ?? 0)} staff
+                    </div>
+                  </div>
+                  <StatusBadge status={t.subscription?.status || 'EXPIRED_LOCKED'} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add School Modal */}

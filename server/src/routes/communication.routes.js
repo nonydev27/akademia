@@ -18,5 +18,6 @@ router.use(requireAuth, attachTenant);
 // email feature to be part of the school's plan.
 router.get('/', validate({ query: controller.listQuerySchema }), controller.list);
 router.post('/retry/:id', requireRole('SCHOOL_ADMIN'), requireFeature('email'), controller.retry);
+router.post('/send', requireRole('SCHOOL_ADMIN'), requireFeature('email'), validate({ body: controller.sendSchema }), controller.send);
 
 export default router;

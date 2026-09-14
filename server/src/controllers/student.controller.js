@@ -205,6 +205,57 @@ export async function deactivate(req, res) {
   res.json({ student });
 }
 
+export const bulkDeleteSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(200),
+});
+
+export async function bulkDelete(req, res) {
+  const { ids } = req.body;
+
+  // Verify all IDs belong to this tenant
+  const count = await prisma.student.count({
+    where: { id: { in: ids }, tenantId: req.tenantId },
+  });
+  if (count !== ids.length) throw ApiError.badRequest('One or more students not found in this school');
+
+  // Hard-delete students (cascades enrollments, attendance, grades, fee accounts, report cards via DB constraints)
+  await prisma.$transaction([
+    prisma.studentGuardian.deleteMany({ where: { studentId: { in: ids } } }),
+    prisma.enrollment.deleteMany({ where: { studentId: { in: ids } } }),
+    prisma.attendance.deleteMany({ where: { studentId: { in: ids } } }),
+    prisma.grade.deleteMany({ where: { studentId: { in: ids } } }),
+    prisma.reportCard.deleteMany({ where: { studentId: { in: ids } } }),
+    prisma.payment.deleteMany({ where: { account: { studentId: { in: ids } } } }),
+    prisma.studentFeeAccount.deleteMany({ where: { studentId: { in: ids } } }),
+    prisma.student.deleteMany({ where: { id: { in: ids }, tenantId: req.tenantId } }),
+  ]);
+
+  res.json({ message: `${ids.length} student${ids.length > 1 ? 's' : ''} deleted`, deleted: ids.length });
+}
+
+export const checkDuplicateSchema = z.object({
+  fullName:    z.string().min(2),
+  dateOfBirth: z.coerce.date().optional(),
+});
+
+export async function checkDuplicate(req, res) {
+  const { fullName, dateOfBirth } = req.body;
+
+  const where = {
+    tenantId: req.tenantId,
+    fullName: { equals: fullName.trim(), mode: 'insensitive' },
+    ...(dateOfBirth ? { dateOfBirth: new Date(dateOfBirth) } : {}),
+  };
+
+  const matches = await prisma.student.findMany({
+    where,
+    select: { id: true, fullName: true, admissionNumber: true, dateOfBirth: true, enrollments: { include: { class: true } } },
+    take: 5,
+  });
+
+  res.json({ duplicates: matches });
+}
+
 export const addGuardianSchema = z.object({
   fullName: z.string().min(2),
   phone:    z.string().min(6),

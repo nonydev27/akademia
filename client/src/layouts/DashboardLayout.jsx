@@ -114,12 +114,13 @@ export default function DashboardLayout() {
         style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)' }}
       >
         {/* Logo */}
-        <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/10 ${collapsed ? 'justify-center' : ''}`}>
-          <Logo size={36} className="flex-shrink-0 shadow-glow-blue rounded-xl" />
-          {!collapsed && (
-            <div className="animate-fade-in">
-              <div className="font-extrabold text-white text-base leading-none">Akademia</div>
-              <div className="text-xs text-slate-400 mt-0.5">{roleLabel}</div>
+        <div className={`flex items-center px-4 py-5 border-b border-white/10 ${collapsed ? 'justify-center' : ''}`}>
+          {collapsed ? (
+            <Logo size={34} showText={false} className="flex-shrink-0" />
+          ) : (
+            <div className="animate-fade-in flex flex-col gap-0.5">
+              <Logo size={34} showText={true} dark={true} className="flex-shrink-0" />
+              <div className="text-xs text-slate-500 pl-1 mt-1">{roleLabel}</div>
             </div>
           )}
         </div>
@@ -194,11 +195,14 @@ export default function DashboardLayout() {
 
           <div className="flex-1 min-w-0 flex flex-col">
             <BreadCrumb />
-            {/* School name shown for admin and staff */}
+            {/* School name + slogan shown for admin and staff */}
             {user?.tenantName && (
               <div className="flex items-center gap-1.5 mt-0.5">
                 <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                <span className="text-xs text-slate-500 font-medium truncate">{user.tenantName}</span>
+                <span className="text-xs font-bold text-slate-700 truncate">{user.tenantName}</span>
+                {user?.tenantSlogan && (
+                  <span className="text-xs text-slate-400 truncate hidden sm:inline">— <em>{user.tenantSlogan}</em></span>
+                )}
               </div>
             )}
           </div>

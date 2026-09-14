@@ -21,6 +21,9 @@ export default function Terms() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(null);
+  const [showAddYear, setShowAddYear] = useState(false);
+  const [yearLabel, setYearLabel] = useState('');
+  const [savingYear, setSavingYear] = useState(false);
 
   const [form, setForm] = useState({ academicYearId: '', label: '', status: 'UPCOMING', startDate: '', endDate: '' });
 
@@ -103,6 +106,20 @@ export default function Terms() {
     return opt || STATUS_OPTIONS[2];
   };
 
+  async function handleSaveYear(e) {
+    e.preventDefault();
+    setSavingYear(true);
+    try {
+      await termsApi.createAcademicYear({ label: yearLabel.trim() });
+      toast.success('Academic year created');
+      setShowAddYear(false);
+      setYearLabel('');
+      fetchTerms();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create academic year');
+    } finally { setSavingYear(false); }
+  }
+
   return (
     <div className="space-y-6">
       <div className="page-header">
@@ -110,7 +127,12 @@ export default function Terms() {
           <h1 className="page-title">Terms & Semesters</h1>
           <p className="page-subtitle">Manage academic terms — activate which one is currently ongoing</p>
         </div>
-        <Button variant="primary" onClick={openAdd}><Plus className="w-4 h-4" /> Add Term</Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => { setYearLabel(''); setShowAddYear(true); }}>
+            <Plus className="w-4 h-4" /> New Academic Year
+          </Button>
+          <Button variant="primary" onClick={openAdd}><Plus className="w-4 h-4" /> Add Term</Button>
+        </div>
       </div>
 
       <div className="flex gap-3 p-4 bg-brand-50 rounded-2xl border-brand-100">
@@ -207,6 +229,9 @@ export default function Terms() {
                 <option key={y.id} value={y.id}>{y.label}</option>
               ))}
             </select>
+            {academicYears.length === 0 && (
+              <p className="text-xs text-amber-600 mt-1">No academic years yet — create one first using "New Academic Year".</p>
+            )}
           </div>
           <div>
             <label className="label">Term Label *</label>
@@ -238,6 +263,26 @@ export default function Terms() {
               {editing ? 'Update' : 'Create'} Term
             </Button>
             <Button type="button" variant="secondary" onClick={() => { setShowAdd(false); setEditing(null); }}>Cancel</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={showAddYear} onClose={() => setShowAddYear(false)} title="New Academic Year" size="sm">
+        <form onSubmit={handleSaveYear} className="space-y-4">
+          <div>
+            <label className="label">Year Label *</label>
+            <Input
+              value={yearLabel}
+              onChange={(e) => setYearLabel(e.target.value)}
+              placeholder="e.g. 2026/2027"
+              required
+              autoFocus
+            />
+            <p className="text-xs text-slate-400 mt-1">This groups terms together. You can add terms to it after creating it.</p>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" variant="primary" loading={savingYear} className="flex-1">Create Year</Button>
+            <Button type="button" variant="secondary" onClick={() => setShowAddYear(false)}>Cancel</Button>
           </div>
         </form>
       </Modal>

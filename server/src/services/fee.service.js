@@ -37,7 +37,7 @@ export async function getStudentBalance(studentId) {
   };
 }
 
-export async function recordPayment({ studentId, amount, reference }) {
+export async function recordPayment({ studentId, amount, reference, note }) {
   return prisma.$transaction(async (tx) => {
     let account = await tx.studentFeeAccount.findUnique({ where: { studentId } });
     if (!account) {
@@ -45,7 +45,7 @@ export async function recordPayment({ studentId, amount, reference }) {
     }
 
     const payment = await tx.payment.create({
-      data: { accountId: account.id, amount, reference, validated: true },
+      data: { accountId: account.id, amount, reference, validated: true, note: note || null },
     });
 
     const updatedAccount = await tx.studentFeeAccount.update({
