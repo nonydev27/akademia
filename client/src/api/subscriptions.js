@@ -7,4 +7,6 @@ export const subscriptionsApi = {
     api.get("/subscriptions/renew/verify", {
       params: plan ? { reference, plan } : { reference },
     }),
+  pending: () => api.get("/subscriptions/pending"),
+  confirm: (tenantId, data) => api.post(`/subscriptions/${tenantId}/confirm`, data),
 };

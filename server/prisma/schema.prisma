@@ -24,6 +24,7 @@ enum SchoolLevel {
 
 enum SubscriptionStatus {
   ACTIVE
+  PENDING
   EXPIRED_IN_GRACE
   EXPIRED_LOCKED
 }

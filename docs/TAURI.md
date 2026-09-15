@@ -301,7 +301,6 @@ build if you need to reduce size further.
 | Offline storage (SQLite via Tauri) | Grade entry & attendance work without internet | Medium |
 | File system access (read/write PDFs locally) | Download report cards to a chosen folder | Low |
 | Native notifications | Reminders for fee deadlines, new results | Low |
-| Auto-updater | Push desktop app updates without manual installs | Low |
 | System tray (minimize to tray) | Keep running in background for notifications | Medium |
 | Native file picker for imports | CSV student import from local files | Low |
 | Print support (native print) | Print report cards without browser dialog | Medium |
@@ -309,6 +308,116 @@ build if you need to reduce size further.
 
 Each of these would add a Tauri command (`#[tauri::command]` in Rust,
 `invoke()` from TypeScript) and a capability in `capabilities/`.
+
+> The **auto-updater** was on this list and is now implemented — see
+> section 11 below.
+
+---
+
+## 11. Shipping updates to users
+Because the desktop build bundles the UI, React changes are frozen into
+the installed `.exe` until the user installs a new release. The Tauri
+updater plugin solves that: every running app checks a release endpoint,
+downloads a signed payload, installs it, and relaunches itself.
+
+### How a change reaches users
+| You changed | What ships it | Speed |
+|---|---|---|
+| `server/` (API, routes, business logic) | Redeploy the server | Instant — no client rebuild |
+| `client/` UI (React, styles, pages) | New tag → release workflow | Automatic on next check |
+| `tauri.conf.json`, `Cargo.toml`, icons | New tag → release workflow | Automatic on next check |
+
+The cheapest lever is the server. Anything you can push server-side
+avoids a release entirely.
+
+### The pieces that were added
+| File | Role |
+|---|---|
+| `client/src/lib/updater.js` | Calls `check()` + `downloadAndInstall()`, then relaunches. No-op outside the desktop shell. |
+| `client/src/main.jsx` | Calls `startUpdateChecks()` at boot; re-checks every 6 hours. |
+| `client/src-tauri/src/lib.rs` | Registers `tauri_plugin_updater` and `tauri_plugin_process`. |
+| `client/src-tauri/capabilities/desktop.json` | Grants `updater:default` + `process:allow-restart`. |
+| `client/src-tauri/tauri.conf.json` | `plugins.updater` endpoint/pubkey, and `bundle.createUpdaterArtifacts: true`. |
+| `client/scripts/bump-version.mjs` | Sets the version in all three files that declare it. |
+| `.github/workflows/release.yml` | Builds, signs, and publishes on a `v*` tag. |
+
+### One-time setup (do this before the first release)
+
+**1. Generate a signing keypair.** Updates are rejected unless signed
+with the matching key, so this is what stops someone else shipping a
+malicious build to your schools.
+
+```bash
+cd client
+npx tauri signer generate -w ~/.tauri/akademia.key
+```
+
+You get a **public** key and a **private** key. The private key is the
+only thing that can authorise an update — never commit it.
+
+**2. Put the public key in `client/src-tauri/tauri.conf.json`** — replace
+`REPLACE_WITH_UPDATER_PUBLIC_KEY` under `plugins.updater.pubkey`.
+
+The public key is not a secret and is meant to be shipped in the binary.
+
+**3. Point the endpoint at your repo.** In the same block, replace
+`OWNER/REPO` in the `endpoints` URL with the real GitHub path, e.g.
+`https://github.com/akademia/akademia/releases/latest/download/latest.json`.
+
+**4. Add the repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `TAURI_SIGNING_PRIVATE_KEY` | Contents of the private key file |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | The password you chose |
+
+**5. Add the repository variables** used to bake the API URL into the bundle:
+
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | Deployed API, e.g. `https://api.yourschool.app/api/v1` |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
+
+### Cutting a release
+```bash
+cd client
+npm run release -- 0.2.0      # sets the version in all three files
+git add -A && git commit -m "Release v0.2.0"
+git tag v0.2.0
+git push origin main --tags    # triggers the workflow
+```
+
+The workflow builds the NSIS installer, signs it, and publishes the
+gitHub Release along with `latest.json`. Installed apps pick it up on
+their next check (at launch, or within 6 hours).
+
+### Installing locally to test
+```bash
+cd client
+npm run desktop:build
+```
+
+The installer and the signed updater payload land in
+`client/src-tauri/target/release/bundle/nsis/`.
+
+### Gotchas
+- **The version must match in all three files.** If `Cargo.toml` lags,
+  the running app reports an older version than the release and the
+  updater may skip the update as a downgrade. Always use
+  `npm run release -- <version>` rather than editing by hand.
+- **Releases must not be drafts.** A draft release is not served at
+  `/releases/latest/`, so no app will ever see it. The workflow sets
+  `releaseDraft: false` for this reason.
+- **Updating from an unsigned build never works.** An app installed from
+  a build made *before* the keypair existed has no pubkey to verify
+  against, so it must be reinstalled manually **once**. Every release
+  after that updates automatically.
+- **`VITE_API_URL` is baked in at build time.** Users cannot change it
+  after installing, so it must point at your deployed API in the release
+  workflow — not `localhost`.
+- **The server is deployed separately.** Tagging a release does not
+  deploy the API. Do both when a change spans client and server.
 
 ---
 

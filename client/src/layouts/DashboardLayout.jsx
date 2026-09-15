@@ -17,6 +17,7 @@ const ICON_SIZE = 'w-[18px] h-[18px]';
 const NAV_SUPER_ADMIN = [
   { to: '/super-admin',         icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/super-admin/schools', icon: School,          label: 'Schools' },
+  { to: '/super-admin/pending', icon: AlertTriangle,   label: 'Pending' },
   { to: '/super-admin/profile', icon: UserCircle,      label: 'My Profile' },
 ];
 

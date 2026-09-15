@@ -1,0 +1,72 @@
+name: Release Desktop App
+
+# Push a tag like v0.2.0 to build, sign, and publish a new desktop release.
+# The Tauri updater in every installed app polls this repo's
+# /releases/latest/download/latest.json, so a successful run here is all it
+# takes for users to receive the update automatically.
+#
+# The server is deployed separately — API changes do NOT need this workflow.
+on:
+  push:
+    tags:
+      - "v*"
+
+# tauri-action needs write access to create the GitHub Release.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # The bundle target is NSIS (Windows-only) per tauri.conf.json, so building
+    # on other runners would just produce artifacts nothing can install.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: client/src-tauri
+
+      # Client env. VITE_API_URL is baked into the bundle at build time, so the
+      # release MUST point at the deployed API — set these as repository
+      # variables/vars in Settings > Secrets and variables > Actions.
+      - name: Write client .env
+        shell: bash
+        run: |
+          cat > client/.env <<EOF
+          VITE_API_URL=${{ vars.VITE_API_URL }}
+          VITE_SUPABASE_URL=${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY=${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          EOF
+
+      - name: Install dependencies
+        run: npm install --workspaces
+
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Private half of the updater keypair. Generated once with
+          # `npx tauri signer generate`; the public half lives in
+          # tauri.conf.json -> plugins.updater.pubkey and is NOT secret.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: client
+          tagName: ${{ github.ref_name }}
+          releaseName: "Akademia ${{ github.ref_name }}"
+          releaseBody: "See the assets below to download and install this version."
+          # A draft release is invisible to the updater endpoint, so publish it
+          # directly — that is what makes check() see the new version.
+          releaseDraft: false
+          prerelease: false

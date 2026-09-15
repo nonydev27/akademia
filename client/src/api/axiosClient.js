@@ -8,6 +8,8 @@ export function getAccessToken()      { return _accessToken; }
 // ── Axios instance ────────────────────────────────────────
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
+  // Render free tier can take up to 50 s on a cold start — give it 60 s.
+  timeout: 60000,
 });
 
 // ── Request interceptor — attach Bearer token ─────────────

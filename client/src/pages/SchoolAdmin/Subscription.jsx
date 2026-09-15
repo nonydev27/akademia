@@ -46,13 +46,39 @@ export default function Subscription() {
         callbackUrl,
         plan: selectedPlan,
       });
-
       const url = res.data.checkoutUrl || '';
       window.location.href = url;
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not initialize payment');
       setPaying(false);
     }
+  }
+
+  if (sub?.status === 'PENDING') {
+    return (
+      <div className="max-w-2xl space-y-6">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Subscription</h1>
+            <p className="page-subtitle">Payment pending confirmation</p>
+          </div>
+        </div>
+        <div className="card p-6 text-center">
+          <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Payment Received</h2>
+          <p className="text-slate-500 mb-2">
+            Your payment for the <strong>{planById(sub?.plan).name}</strong> plan
+            {' '}(GHS {planById(sub?.plan).priceGHS.toLocaleString()}/year) has been received.
+          </p>
+          <p className="text-sm text-amber-600 mb-4">
+            A Super Admin will review and confirm your subscription within 24 hours.
+          </p>
+          <p className="text-xs text-slate-400">
+            Reference: <code className="font-mono">{sub?.lastPaymentRef}</code>
+          </p>
+        </div>
+      </div>
+    );
   }
 
   async function verifyPayment(reference, plan) {
@@ -70,6 +96,7 @@ export default function Subscription() {
 
   const statusConfig = {
     ACTIVE:           { color: 'emerald', icon: CheckCircle2, label: 'Active' },
+    PENDING:          { color: 'amber',   icon: AlertTriangle, label: 'Pending' },
     EXPIRED_IN_GRACE: { color: 'amber',   icon: AlertTriangle, label: 'Grace Period' },
     EXPIRED_LOCKED:   { color: 'red',     icon: Lock,          label: 'Locked' },
   };

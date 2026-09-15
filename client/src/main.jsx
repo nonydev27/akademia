@@ -3,8 +3,13 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
+import { startUpdateChecks } from './lib/updater';
 import App from './App.jsx';
 import './index.css';
+
+// Check for a newer signed release on launch and every few hours after. No-op
+// in a browser tab; only does anything inside the packaged desktop app.
+startUpdateChecks();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

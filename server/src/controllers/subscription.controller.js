@@ -59,6 +59,13 @@ export async function renewSelfServe(req, res) {
   const plan = isValidPlan(req.body.plan) ? req.body.plan : subscription.plan || 'BASIC';
   const amount = planPrice(plan);
 
+  // Mark subscription as PENDING before payment — activation requires
+  // Super Admin confirmation when using test-mode keys.
+  await prisma.subscription.update({
+    where: { tenantId: req.tenantId },
+    data: { status: 'PENDING', lastPaymentRef: null },
+  });
+
   const { checkoutUrl, reference } = await initializeRenewalPayment({
     tenantId: req.tenantId,
     amount,
@@ -104,25 +111,31 @@ export async function verifyByReference(req, res) {
   const result = await verifyPayment(reference);
   if (!result.success) throw ApiError.badRequest('Payment could not be verified');
 
-  const subscription = await activateSubscription(
-    req.tenantId,
-    reference,
-    result.amount,
-    result.plan || plan,
-  );
+  // Payment verified — keep subscription PENDING. Activation requires
+  // Super Admin confirmation when using test-mode keys.
+  const subscription = await prisma.subscription.update({
+    where: { tenantId: req.tenantId },
+    data: {
+      status: 'PENDING',
+      lastPaymentRef: reference,
+      lastPaymentAt: new Date(),
+      lastPaymentAmt: result.amount ?? null,
+    },
+  });
 
+  // Notify Super Admin to confirm the payment
   try {
     const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
-    const admins = await prisma.user.findMany({
-      where: { tenantId: req.tenantId, role: 'SCHOOL_ADMIN' },
-      select: { email: true },
+    const superAdmins = await prisma.user.findMany({
+      where: { role: 'SUPER_ADMIN', active: true },
+      select: { email: true, fullName: true },
     });
-    const adminEmails = admins.map((a) => a.email);
-    if (adminEmails.length > 0) {
+    const superAdminEmails = superAdmins.map((a) => a.email);
+    if (superAdminEmails.length > 0) {
       await sendAdminNotification({
         tenantId: req.tenantId,
-        to: adminEmails,
-        subject: `Subscription Renewed — ${tenant?.name ?? 'School'}`,
+        to: superAdminEmails,
+        subject: `Pending Subscription — ${tenant?.name ?? 'School'}`,
         templateKey: 'SUBSCRIPTION_RENEWED',
         data: {
           schoolName: tenant?.name ?? 'Akademia',
@@ -133,9 +146,9 @@ export async function verifyByReference(req, res) {
         },
       });
     }
-  } catch (err) { /* non-fatal: notification failure should not block renewal */ }
+  } catch (err) { /* non-fatal: notification failure should not block */ }
 
-  res.json({ message: 'Subscription renewed', subscription });
+  res.json({ message: 'Payment received — pending Super Admin confirmation', subscription });
 }
 
 export async function webhook(req, res) {
@@ -150,9 +163,84 @@ export async function webhook(req, res) {
       const amount    = (event.data.amount || 0) / 100;
       const plan      = event.data?.metadata?.plan;
       const tenantId  = reference.split('_')[1];
-      await activateSubscription(tenantId, reference, amount, plan);
+      // Always hold as PENDING for Super Admin confirmation in test mode.
+      // In production with live keys, the webhook auto-activates.
+      if (env.PAYSTACK_SECRET_KEY?.startsWith('sk_test_')) {
+        await prisma.subscription.update({
+          where: { tenantId },
+          data: { status: 'PENDING', lastPaymentRef: reference, lastPaymentAmt: amount },
+        });
+      } else {
+        await activateSubscription(tenantId, reference, amount, plan);
+      }
     }
   }
 
   res.json({ received: true });
+}
+
+export const confirmSchema = z.object({
+  reference: z.string().min(1),
+});
+
+export async function confirm(req, res) {
+  const { reference } = req.body;
+  const result = await verifyPayment(reference);
+  if (!result.success) throw ApiError.badRequest('Payment could not be verified');
+
+  const subscription = await prisma.subscription.findFirst({
+    where: {
+      tenantId: req.params.tenantId,
+      status: 'PENDING',
+      lastPaymentRef: reference,
+    },
+  });
+  if (!subscription) throw ApiError.notFound('No pending subscription found for this reference');
+
+  invalidateCached(req.params.tenantId);
+  const plan = subscription.plan;
+  const amount = result.amount ?? planPrice(plan);
+  const base = subscription.expiresAt > new Date() ? subscription.expiresAt.getTime() : Date.now();
+
+  const updated = await prisma.subscription.update({
+    where: { tenantId: req.params.tenantId },
+    data: {
+      status: 'ACTIVE',
+      features: planFeatures(plan),
+      expiresAt: new Date(base + ONE_YEAR_MS),
+      graceEndsAt: null,
+      lastPaymentRef: reference,
+      lastPaymentAt: new Date(),
+      lastPaymentAmt: amount,
+    },
+  });
+
+  res.json({ message: 'Subscription activated', subscription: updated });
+}
+
+export async function pendingList(req, res) {
+  const pending = await prisma.subscription.findMany({
+    where: { status: 'PENDING' },
+    include: {
+      tenant: {
+        include: {
+          users: { select: { id: true, fullName: true, email: true, role: true } },
+        },
+      },
+    },
+    orderBy: { updatedAt: 'desc' },
+  });
+
+  res.json({
+    pending: pending.map((s) => ({
+      id: s.id,
+      tenantId: s.tenantId,
+      schoolName: s.tenant?.name ?? 'Unknown',
+      plan: s.plan,
+      amount: s.lastPaymentAmt,
+      reference: s.lastPaymentRef,
+      paymentAt: s.lastPaymentAt,
+      requestedBy: s.tenant?.users?.[0]?.email ?? 'Unknown',
+    })),
+  });
 }

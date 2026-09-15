@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import Logo from '../../components/ui/Logo';
 import Button from '../../components/ui/Button';
 import {
-  Mail, Lock, Eye, EyeOff, ShieldCheck, School, BookOpen, ArrowRight,
+  Mail, Lock, Eye, EyeOff, ArrowRight,
   Users, Wallet, NotebookPen, Send,
 } from 'lucide-react';
 
@@ -26,12 +26,6 @@ const FEATURES = [
   { Icon: Send,        label: 'Parent Communications', sub: 'Email and SMS notices sent the moment results publish' },
 ];
 
-const DEMO_ACCOUNTS = [
-  { label: 'Super Admin',  email: 'superadmin@akademia.app', pass: 'ChangeMe123!', Icon: ShieldCheck },
-  { label: 'School Admin', email: 'admin@demoschool.app',    pass: 'Admin123!',    Icon: School },
-  { label: 'Teacher',      email: 'teacher@demoschool.app',  pass: 'Staff123!',    Icon: BookOpen },
-];
-
 function getRoleDashboard(role) {
   if (role === 'SUPER_ADMIN')  return '/super-admin';
   if (role === 'SCHOOL_ADMIN') return '/admin';
@@ -42,12 +36,13 @@ function getRoleDashboard(role) {
 export default function Login() {
   const { login, user } = useAuth();
   const navigate         = useNavigate();
-  const [email, setEmail]     = useState('');
-  const [password, setPass]   = useState('');
-  const [loading, setLoading] = useState(false);
-  const [shake, setShake]     = useState(false);
-  const [showPass, setShow]   = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [email, setEmail]       = useState('');
+  const [password, setPass]     = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [slowServer, setSlow]   = useState(false);
+  const [shake, setShake]       = useState(false);
+  const [showPass, setShow]     = useState(false);
+  const [mounted, setMounted]   = useState(false);
 
   useEffect(() => { setTimeout(() => setMounted(true), 60); }, []);
 
@@ -63,6 +58,9 @@ export default function Login() {
       return;
     }
     setLoading(true);
+    setSlow(false);
+    // If the server takes more than 5 s, show a "waking up" hint
+    const slowTimer = setTimeout(() => setSlow(true), 5000);
     try {
       const u = await login(email, password);
       toast.success(`Welcome back, ${u.fullName.split(' ')[0]}!`);
@@ -73,6 +71,8 @@ export default function Login() {
       setShake(true);
       setTimeout(() => setShake(false), 600);
     } finally {
+      clearTimeout(slowTimer);
+      setSlow(false);
       setLoading(false);
     }
   };
@@ -198,28 +198,13 @@ export default function Login() {
             <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full mt-2">
               Sign In <ArrowRight className="w-4 h-4" />
             </Button>
-          </form>
 
-          {/* Demo hints */}
-          <div className="mt-8 pt-6 border-t border-slate-100 hidden">
-            <p className="text-xs text-slate-400 font-medium mb-3 uppercase tracking-widest">Demo Accounts</p>
-            <div className="grid grid-cols-3 gap-2">
-              {DEMO_ACCOUNTS.map((d) => (
-                <button
-                  key={d.label}
-                  type="button"
-                  onClick={() => { setEmail(d.email); setPass(d.pass); }}
-                  className="flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl
-                             bg-slate-50 hover:bg-slate-100 border border-slate-200
-                             text-slate-500 hover:text-slate-800 text-xs font-medium
-                             transition-all duration-200 active:scale-95"
-                >
-                  <d.Icon className="w-4 h-4" />
-                  {d.label}
-                </button>
-              ))}
-            </div>
-          </div>
+            {slowServer && (
+              <p className="text-xs text-center text-amber-600 mt-2 animate-pulse">
+                ⏳ Server is waking up — this can take up to 30 seconds on the first sign-in…
+              </p>
+            )}
+          </form>
 
           <div style={{ textAlign: 'center', marginTop: '2rem' }}>
             <p

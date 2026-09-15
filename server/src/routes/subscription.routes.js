@@ -29,4 +29,8 @@ router.get(
   controller.verifyByReference
 );
 
+// Super Admin: manage pending subscriptions
+router.get('/pending', requireRole('SUPER_ADMIN'), controller.pendingList);
+router.post('/:tenantId/confirm', requireRole('SUPER_ADMIN'), validate({ body: controller.confirmSchema }), controller.confirm);
+
 export default router;

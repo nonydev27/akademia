@@ -12,6 +12,7 @@ import CommunicationSend from './pages/SchoolAdmin/CommunicationSend';
 // Super Admin
 import TenantsDashboard  from './pages/SuperAdmin/TenantsDashboard';
 import TenantDetail      from './pages/SuperAdmin/TenantDetail';
+import PendingSubscriptions from './pages/SuperAdmin/PendingSubscriptions';
 import SuperAdminProfile from './pages/SchoolAdmin/Profile';
 
 // School Admin
@@ -35,6 +36,9 @@ import StaffAttendance   from './pages/Staff/Attendance';
 import GradeEntry        from './pages/Staff/GradeEntry';
 import MySubjects        from './pages/Staff/MySubjects';
 import StaffProfile      from './pages/Staff/Profile';
+
+// Disable right-click context menu in the production desktop app
+document.addEventListener('contextmenu', event => event.preventDefault());
 
 function RootRedirect() {
   const { user, loading } = useAuth();
@@ -60,6 +64,7 @@ export default function App() {
           <Route path="/super-admin"             element={<TenantsDashboard />} />
           <Route path="/super-admin/schools"     element={<TenantsDashboard />} />
           <Route path="/super-admin/schools/:id" element={<TenantDetail />} />
+          <Route path="/super-admin/pending"     element={<PendingSubscriptions />} />
           <Route path="/super-admin/profile"     element={<SuperAdminProfile />} />
         </Route>
       </Route>
