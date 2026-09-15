@@ -54,7 +54,37 @@ const limiter = rateLimit({
 });
 app.use('/api/v1/', limiter);
 
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+// Origins allowed to call the API. `process.env.CLIENT_URL` is whatever the
+// deployed environment sets (web app), while the Tauri desktop build serves its
+// webview from http(s)://tauri.localhost on Windows and tauri://localhost on
+// macOS/Linux — those must always be allowed or the packaged app cannot reach
+// the API at all.
+const STATIC_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:1420',
+  'tauri://localhost',
+  'http://tauri.localhost',
+  'https://tauri.localhost',
+];
+
+const allowedOrigins = new Set(
+  [process.env.CLIENT_URL, ...STATIC_ALLOWED_ORIGINS]
+    .filter(Boolean)
+    .map((o) => o.replace(/\/+$/, '')),
+);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // No Origin header (server-to-server, curl, mobile) — allow it.
+    if (!origin) return callback(null, true);
+    const normalized = origin.replace(/\/+$/, '');
+    // Reflect the exact incoming origin when allowed so the browser CORS check
+    // always matches; otherwise reject.
+    if (allowedOrigins.has(normalized)) return callback(null, normalized);
+    return callback(new Error(`Blocked by CORS: ${origin}`));
+  },
+  credentials: true,
+}));
 
 // Paystack webhook needs raw body for signature verification
 app.use('/api/v1/subscriptions/webhook', express.raw({ type: '*/*' }));
